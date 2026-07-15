@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Format Rust sources
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml
+          run: cargo fmt --all --manifest-path src-tauri/Cargo.toml
       - name: Commit formatted sources
         run: |
           if git diff --quiet; then
