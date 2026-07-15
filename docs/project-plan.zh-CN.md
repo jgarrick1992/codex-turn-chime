@@ -2,7 +2,7 @@
 
 > 文档状态：Approved plan
 > 计划版本：1.0
-> 对应产品版本：`v0.1.0-beta.1`
+> 对应产品版本：`v0.1.0-beta.2`
 > 更新日期：2026-07-16
 > GitHub Owner：`jgarrick1992`
 
@@ -28,7 +28,7 @@
 | 仓库可见性 | Public |
 | 默认分支 | `main` |
 | 开源协议 | MIT |
-| 首版版本 | `v0.1.0-beta.1` |
+| 首版版本 | `v0.1.0-beta.2` |
 | 桌面技术 | Tauri 2 + React + TypeScript + Vite + Rust |
 | 包管理 | npm，提交 `package-lock.json` |
 | Rust 工具链 | Stable，提交 `Cargo.lock` |
@@ -804,10 +804,10 @@ Rust 检查：
 ### 18.1 版本与触发
 
 - 使用 Semantic Versioning。
-- 第一个 tag：`v0.1.0-beta.1`。
+- 第一个公开 tag：`v0.1.0-beta.2`。
 - `v*` tag 触发 `release.yml`。
-- GitHub Release 默认 `draft: true`、`prerelease: true`。
-- 维护者完成真机验收后手动发布。
+- GitHub Release 构建阶段使用 `draft: true`、`prerelease: true`。
+- macOS 与 Windows 构建全部成功后，工作流自动公开 prerelease。
 
 ### 18.2 构建矩阵
 
@@ -1022,7 +1022,7 @@ Release workflow 预留但不要求以下 secrets：
 - 生成 SBOM、checksum、attestation。
 - 完成真机安装与卸载测试。
 - 完成 Release notes 和已知问题。
-- 发布 `v0.1.0-beta.1` Draft Prerelease，人工审核后公开。
+- 发布 `v0.1.0-beta.2` Prerelease。
 
 完成条件：两个平台安装包、验证资产和文档全部齐全。
 
@@ -1040,7 +1040,7 @@ Release workflow 预留但不要求以下 secrets：
 - 相关文档已更新。
 - PR CI 全绿。
 
-`v0.1.0-beta.1` 只有同时满足以下条件才能公开：
+`v0.1.0-beta.2` 只有同时满足以下条件才能公开：
 
 - macOS 13+ Apple Silicon 真机通过。
 - Windows 11 x64 真机通过。

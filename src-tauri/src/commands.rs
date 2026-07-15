@@ -11,7 +11,7 @@ use crate::{
     monitor::{MonitorEvent, TaskSnapshot},
     paths, queue,
     settings::{self, AppSettings},
-    AppState,
+    shortcuts, AppState,
 };
 
 #[derive(Debug, Serialize)]
@@ -26,6 +26,10 @@ pub struct Diagnostics {
     watcher_enabled: bool,
     watcher_compatible: bool,
     watcher_message: Option<String>,
+    shortcut_configured: bool,
+    shortcut_registered: bool,
+    shortcut: Option<String>,
+    shortcut_message: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -54,6 +58,11 @@ pub fn mark_task_read(state: State<'_, AppState>, session_id: String, turn_id: S
 }
 
 #[tauri::command]
+pub fn mark_all_tasks_read(state: State<'_, AppState>) -> AppResult<()> {
+    state.database.mark_all_read()
+}
+
+#[tauri::command]
 pub fn clear_history(state: State<'_, AppState>) -> AppResult<()> {
     state.database.clear_history()
 }
@@ -70,6 +79,7 @@ pub fn save_settings(
     settings: AppSettings,
 ) -> AppResult<AppSettings> {
     settings.validate()?;
+    let old = settings::load(&state.paths.settings).unwrap_or_default();
     if settings.launch_at_login {
         app.autolaunch()
             .enable()
@@ -79,7 +89,6 @@ pub fn save_settings(
             .disable()
             .map_err(|error| AppError::InvalidConfig(error.to_string()))?;
     }
-    let old = settings::load(&state.paths.settings).unwrap_or_default();
     if settings.transcript_watcher_enabled && !old.transcript_watcher_enabled {
         let mut health = state
             .watcher_health
@@ -88,7 +97,25 @@ pub fn save_settings(
         health.compatible = true;
         health.message = None;
     }
-    settings::save(&state.paths.settings, &settings)?;
+    shortcuts::rebind(
+        &app,
+        &state.shortcut_status,
+        old.dismiss_reminder_shortcut.as_deref(),
+        settings.dismiss_reminder_shortcut.as_deref(),
+    )?;
+    if let Err(error) = settings::save(&state.paths.settings, &settings) {
+        if let Err(rollback_error) = shortcuts::rebind(
+            &app,
+            &state.shortcut_status,
+            settings.dismiss_reminder_shortcut.as_deref(),
+            old.dismiss_reminder_shortcut.as_deref(),
+        ) {
+            return Err(AppError::InvalidConfig(format!(
+                "{error}; restoring the previous shortcut also failed: {rollback_error}"
+            )));
+        }
+        return Err(error);
+    }
     Ok(settings)
 }
 
@@ -115,6 +142,11 @@ pub fn get_diagnostics(state: State<'_, AppState>) -> AppResult<Diagnostics> {
         .lock()
         .map_err(|_| AppError::InvalidConfig("watcher health lock is poisoned".into()))?
         .clone();
+    let shortcut = state
+        .shortcut_status
+        .lock()
+        .map_err(|_| AppError::InvalidConfig("shortcut status lock is poisoned".into()))?
+        .clone();
     let codex_home = paths::codex_home()?;
     let hook_config = hooks::hook_config_path()?;
     Ok(Diagnostics {
@@ -128,6 +160,10 @@ pub fn get_diagnostics(state: State<'_, AppState>) -> AppResult<Diagnostics> {
         watcher_enabled: app_settings.transcript_watcher_enabled,
         watcher_compatible: health.compatible,
         watcher_message: health.message,
+        shortcut_configured: app_settings.dismiss_reminder_shortcut.is_some(),
+        shortcut_registered: shortcut.active,
+        shortcut: shortcut.shortcut,
+        shortcut_message: shortcut.message,
     })
 }
 

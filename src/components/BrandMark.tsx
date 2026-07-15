@@ -8,7 +8,7 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <div>
           <strong>CodexTurnChime</strong>
-          <span>v0.1.0-beta.1</span>
+          <span>v0.1.0-beta.2</span>
         </div>
       )}
     </div>

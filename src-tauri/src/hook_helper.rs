@@ -15,11 +15,15 @@ struct HookInput {
     turn_id: String,
     cwd: String,
     hook_event_name: String,
+    permission_mode: String,
 }
 
-fn convert(input: HookInput) -> AppResult<MonitorEvent> {
+fn convert(input: HookInput) -> AppResult<Option<MonitorEvent>> {
     let (kind, reason) = match input.hook_event_name.as_str() {
         "UserPromptSubmit" => (MonitorKind::Running, "user_prompt_submitted"),
+        "PermissionRequest" if matches!(input.permission_mode.as_str(), "dontAsk" | "bypassPermissions") => {
+            return Ok(None)
+        }
         "PermissionRequest" => (MonitorKind::NeedsInput, "permission_requested"),
         "Stop" => (MonitorKind::Ready, "turn_stopped"),
         event => {
@@ -28,13 +32,13 @@ fn convert(input: HookInput) -> AppResult<MonitorEvent> {
             )))
         }
     };
-    Ok(MonitorEvent::new_hook(
+    Ok(Some(MonitorEvent::new_hook(
         input.session_id,
         input.turn_id,
         kind,
         input.cwd,
         reason,
-    ))
+    )))
 }
 
 pub fn run_from_reader(mut reader: impl Read) -> AppResult<()> {
@@ -44,7 +48,9 @@ pub fn run_from_reader(mut reader: impl Read) -> AppResult<()> {
         return Err(AppError::InvalidConfig("hook input exceeds 1 MiB".into()));
     }
     let input: HookInput = serde_json::from_slice(&buffer)?;
-    let event = convert(input)?;
+    let Some(event) = convert(input)? else {
+        return Ok(());
+    };
     let paths = AppPaths::discover()?;
     paths.ensure()?;
     queue::append(&paths.queue, &event)
@@ -61,10 +67,27 @@ mod tests {
             turn_id: "t".into(),
             cwd: "/work".into(),
             hook_event_name: "PermissionRequest".into(),
+            permission_mode: "default".into(),
         })
+        .unwrap()
         .unwrap();
         assert_eq!(event.kind, MonitorKind::NeedsInput);
         assert_eq!(event.reason.as_deref(), Some("permission_requested"));
+    }
+
+    #[test]
+    fn non_interactive_permission_modes_do_not_need_input() {
+        for permission_mode in ["dontAsk", "bypassPermissions"] {
+            let event = convert(HookInput {
+                session_id: "s".into(),
+                turn_id: "t".into(),
+                cwd: "/work".into(),
+                hook_event_name: "PermissionRequest".into(),
+                permission_mode: permission_mode.into(),
+            })
+            .unwrap();
+            assert!(event.is_none());
+        }
     }
 
     #[test]
@@ -74,6 +97,7 @@ mod tests {
             turn_id: "t".into(),
             cwd: "/work".into(),
             hook_event_name: "LegacyStop".into(),
+            permission_mode: "default".into(),
         });
         assert!(matches!(result, Err(AppError::IncompatibleFormat(_))));
     }

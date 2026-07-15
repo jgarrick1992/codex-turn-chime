@@ -27,7 +27,7 @@ pub struct HookPreview {
 }
 
 fn config_path() -> AppResult<PathBuf> {
-    Ok(paths::codex_home()?.join("settings.json"))
+    Ok(paths::codex_home()?.join("hooks.json"))
 }
 
 pub fn hook_config_path() -> AppResult<PathBuf> {
@@ -77,7 +77,7 @@ fn load_config(path: &Path) -> AppResult<Value> {
     let value: Value = serde_json::from_slice(&fs::read(path)?)?;
     if !value.is_object() {
         return Err(AppError::InvalidConfig(
-            "Codex settings root must be a JSON object".into(),
+            "Codex hooks root must be a JSON object".into(),
         ));
     }
     validate_hooks_shape(&value)?;
@@ -124,7 +124,7 @@ fn is_our_handler(value: &Value) -> bool {
 fn event_groups_mut<'a>(root: &'a mut Value, event: &str) -> AppResult<&'a mut Vec<Value>> {
     let root = root
         .as_object_mut()
-        .ok_or_else(|| AppError::InvalidConfig("Codex settings root must be a JSON object".into()))?;
+        .ok_or_else(|| AppError::InvalidConfig("Codex hooks root must be a JSON object".into()))?;
     let hooks = root.entry("hooks").or_insert_with(|| Value::Object(Map::new()));
     let hooks = hooks
         .as_object_mut()
@@ -263,7 +263,7 @@ fn backup(path: &Path, backup_dir: &Path) -> AppResult<Option<PathBuf>> {
     }
     fs::create_dir_all(backup_dir)?;
     let backup_path = backup_dir.join(format!(
-        "codex-settings-{}.json",
+        "codex-hooks-{}.json",
         Utc::now().format("%Y%m%dT%H%M%S%.6fZ")
     ));
     fs::copy(path, &backup_path)?;
@@ -273,7 +273,7 @@ fn backup(path: &Path, backup_dir: &Path) -> AppResult<Option<PathBuf>> {
 fn atomic_write(path: &Path, value: &Value) -> AppResult<()> {
     let parent = path
         .parent()
-        .ok_or_else(|| AppError::Path("Codex settings parent".into()))?;
+        .ok_or_else(|| AppError::Path("Codex hooks parent".into()))?;
     fs::create_dir_all(parent)?;
     let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
     temporary.write_all(pretty(value)?.as_bytes())?;
@@ -335,6 +335,11 @@ pub fn is_installed() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn config_uses_codex_hooks_json() {
+        assert_eq!(config_path().unwrap().file_name().unwrap(), "hooks.json");
+    }
 
     #[test]
     fn add_is_idempotent_and_preserves_unrelated_hooks() {

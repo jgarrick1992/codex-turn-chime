@@ -141,6 +141,14 @@ impl Database {
         Ok(())
     }
 
+    pub fn mark_all_read(&self) -> AppResult<()> {
+        self.connect()?.execute(
+            "UPDATE task_states SET is_read = 1, updated_at = ?1 WHERE is_read = 0",
+            [Utc::now().to_rfc3339()],
+        )?;
+        Ok(())
+    }
+
     pub fn clear_history(&self) -> AppResult<()> {
         self.connect()?.execute_batch(
             "DELETE FROM task_states; DELETE FROM monitor_events; DELETE FROM watcher_checkpoints;",
@@ -307,5 +315,33 @@ mod tests {
         assert_eq!(db.record_events(std::slice::from_ref(&event)).unwrap().len(), 1);
         assert!(db.record_events(&[event]).unwrap().is_empty());
         assert_eq!(db.list_tasks().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn marks_all_tasks_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Database::open(dir.path().join("test.db")).unwrap();
+        let events = [
+            MonitorEvent::new_hook(
+                "session-1".into(),
+                "turn-1".into(),
+                MonitorKind::NeedsInput,
+                "/work/one".into(),
+                "permission_requested",
+            ),
+            MonitorEvent::new_hook(
+                "session-2".into(),
+                "turn-2".into(),
+                MonitorKind::Ready,
+                "/work/two".into(),
+                "task_complete",
+            ),
+        ];
+        db.record_events(&events).unwrap();
+        assert!(db.list_tasks().unwrap().iter().all(|task| !task.is_read));
+
+        db.mark_all_read().unwrap();
+
+        assert!(db.list_tasks().unwrap().iter().all(|task| task.is_read));
     }
 }

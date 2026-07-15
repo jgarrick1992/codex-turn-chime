@@ -6,6 +6,7 @@
 - [Troubleshooting](troubleshooting.md) · [中文](troubleshooting.zh-CN.md)
 - [Security model](security-model.md)
 - [Testing strategy](testing.md)
+- [Voice prompt catalog](voice-prompt-catalog.md)
 - [Release process](releasing.md)
 - [Original feasibility analysis](feasibility-analysis.zh-CN.md)
 - [Original open-source project plan](project-plan.zh-CN.md)

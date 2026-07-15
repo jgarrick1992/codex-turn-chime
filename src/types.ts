@@ -41,6 +41,8 @@ export interface SoundSetting {
 export interface AppSettings {
   language: "en" | "zh-CN";
   muted: boolean;
+  reminder_interval_seconds: number;
+  dismiss_reminder_shortcut: string | null;
   launch_at_login: boolean;
   transcript_watcher_enabled: boolean;
   history_retention_days: 30;
@@ -60,6 +62,10 @@ export interface Diagnostics {
   watcher_enabled: boolean;
   watcher_compatible: boolean;
   watcher_message: string | null;
+  shortcut_configured: boolean;
+  shortcut_registered: boolean;
+  shortcut: string | null;
+  shortcut_message: string | null;
 }
 
 export interface HookPreview {

@@ -61,7 +61,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .monitor-grid { display: grid; grid-template-columns: minmax(460px, 1fr) minmax(340px, 42%); min-height: 0; flex: 1; }
 .task-pane { min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--paper); }
 .task-actions { height: 43px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-bottom: 1px solid var(--line); color: #71808e; font-size: 11px; }
+.task-action-buttons { display: flex; align-items: center; gap: 2px; }
 .text-button { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 6px 8px; color: var(--blue); background: transparent; cursor: pointer; font-size: 11px; }
+.text-button:disabled { opacity: .42; cursor: default; }
 .text-button.danger { color: #a44d43; }
 .task-table { overflow: auto; }
 .task-table-head, .task-row { display: grid; grid-template-columns: 55px minmax(180px, 1.35fr) minmax(100px, .7fr) 100px 48px; align-items: center; }
@@ -146,16 +148,49 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .setting-icon { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid #cddcf0; border-radius: 8px; color: var(--blue); background: #f2f6fc; }
 .setting-icon svg { width: 18px; }
 .sound-main { min-width: 0; }
-.file-picker { width: 100%; height: 36px; display: flex; align-items: center; gap: 8px; margin: 11px 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; color: #5f6b76; background: #faf9f5; cursor: pointer; }
+.sound-source-row { display: grid; grid-template-columns: minmax(160px, .65fr) minmax(0, 1fr); gap: 8px; margin: 11px 0; }
+.sound-source-row select { min-width: 0; height: 36px; padding: 0 9px; border: 1px solid var(--line); border-radius: 6px; color: #4f5d69; background: #fff; }
+.file-picker { min-width: 0; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; color: #5f6b76; background: #faf9f5; cursor: pointer; }
 .file-picker span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.volume-row { display: grid; grid-template-columns: 18px 1fr 40px auto; align-items: center; gap: 8px; color: #697580; font-size: 10px; }
+.volume-row { display: grid; grid-template-columns: 18px 1fr 44px auto; align-items: center; gap: 8px; color: #697580; font-size: 10px; }
 .volume-row input { width: 100%; accent-color: var(--blue); }
+.volume-row .volume-boosted { color: #b45f18; font-weight: 700; }
+.reminder-interval-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.reminder-interval-row strong { font-size: 12px; color: #293846; }
+.reminder-interval-row p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.seconds-input { height: 36px; display: flex; align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.seconds-input:focus-within { outline: 2px solid rgba(52, 105, 164, .22); border-color: var(--blue); }
+.seconds-input input { width: 54px; height: 100%; padding: 0 7px; border: 0; outline: 0; color: #304252; background: transparent; text-align: right; }
+.seconds-input span { align-self: stretch; display: flex; align-items: center; padding: 0 9px; border-left: 1px solid var(--line); color: var(--muted); background: #f7f8fa; font-size: 10px; }
 .integration-card { display: grid; grid-template-columns: 42px 1fr; gap: 14px; }
 .integration-card .button-row { display: flex; gap: 8px; margin-top: 15px; }
 .integration-card.experimental { border-style: dashed; }
 .integration-card code { display: inline-block; margin-top: 10px; padding: 4px 6px; border-radius: 4px; color: #6f598f; background: #f2edf8; font-size: 10px; }
 .health-badge { display: inline-flex; margin-top: 9px; padding: 4px 7px; border-radius: 4px; color: #8b5d14; background: #fff4da; font-size: 10px; font-weight: 700; }
 .health-badge.ok { color: #26734e; background: #e9f7ef; }
+.health-badge.bad { color: #a44d43; background: #fbecea; }
+.shortcut-setting { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 14px; }
+.shortcut-copy { min-width: 0; }
+.shortcut-copy .setting-heading { align-items: flex-start; }
+.shortcut-copy .setting-heading > div { min-width: 0; }
+.shortcut-copy .setting-heading strong { font-size: 13px; }
+.shortcut-copy .setting-heading p { max-width: 520px; margin: 5px 0 0; color: #78838d; font-size: 11px; line-height: 1.5; }
+.shortcut-copy .health-badge { flex: 0 0 auto; margin-top: 0; }
+.shortcut-recorder { width: 100%; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 7px; color: #374552; background: #faf9f5; cursor: pointer; text-align: left; }
+.shortcut-recorder:hover { border-color: #9eb8dc; background: #f5f8fc; }
+.shortcut-recorder.recording { border-color: var(--blue); background: #f1f6fd; box-shadow: inset 3px 0 var(--blue); }
+.shortcut-recorder > small { color: #7b8791; font-size: 10px; white-space: nowrap; }
+.recording-prompt { color: #315f9d; font-size: 12px; font-weight: 700; }
+.recording-prompt.muted-copy { color: #7b8791; font-weight: 500; }
+.keycap-group { display: inline-flex; align-items: center; gap: 5px; }
+.keycap-group > span { display: inline-flex; align-items: center; gap: 5px; }
+.keycap-group i { color: #8a949d; font-size: 10px; font-style: normal; }
+.keycap-group kbd { min-width: 26px; height: 27px; display: inline-grid; place-items: center; padding: 0 7px; border: 1px solid #b9bec3; border-bottom-width: 2px; border-radius: 5px; color: #283744; background: white; box-shadow: 0 1px 0 rgba(23,33,43,.08); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 700; }
+.keycap-group.mac { gap: 3px; }
+.keycap-group.mac > span { gap: 3px; }
+.keycap-group.mac kbd { min-width: 27px; padding: 0 6px; font-size: 14px; }
+.shortcut-error { margin: 8px 0 0; color: #a44d43; font-size: 10px; line-height: 1.45; }
+.shortcut-actions { display: flex; justify-content: flex-end; gap: 4px; margin-top: 6px; }
 .privacy-panel { text-align: center; }
 .privacy-panel > svg { color: var(--green); }
 .privacy-panel p { max-width: 520px; margin: 8px auto 18px; color: #697580; font-size: 12px; line-height: 1.6; }
