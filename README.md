@@ -166,11 +166,10 @@ On Windows 11 x64 with Node.js 22, stable Rust MSVC, Visual Studio C++ Build Too
 powershell -ExecutionPolicy Bypass -File scripts/build_windows_x64.ps1
 ```
 
-The script installs locked npm dependencies, builds the frontend and Windows Hook sidecar, and produces unsigned NSIS and MSI installers:
+The script installs locked npm dependencies, builds the frontend and Windows Hook sidecar, and produces an unsigned NSIS installer. Beta SemVer identifiers such as `beta.2` are not compatible with WiX/MSI version rules, so beta releases use NSIS only:
 
 ```text
 src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*.exe
-src-tauri\target\x86_64-pc-windows-msvc\release\bundle\msi\*.msi
 ```
 
 Run checks:

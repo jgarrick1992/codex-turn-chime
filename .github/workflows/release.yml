@@ -21,7 +21,7 @@ jobs:
             label: macos-arm64
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            bundles: nsis,msi
+            bundles: nsis
             label: windows-x64
     runs-on: ${{ matrix.platform }}
     steps:
@@ -94,7 +94,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Recurse "src-tauri/target/${{ matrix.target }}/release/bundle" -Include *.exe,*.msi
+          $files = Get-ChildItem -Recurse "src-tauri/target/${{ matrix.target }}/release/bundle" -Include *.exe
           $lines = foreach ($file in $files) {
             $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLower()
             "$hash  $($file.Name)"
@@ -105,13 +105,11 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-      - name: Attest Windows installers
+      - name: Attest Windows installer
         if: runner.os == 'Windows'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+          subject-path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
       - name: Attach checksums and SBOM
         uses: softprops/action-gh-release@v2
         with:
