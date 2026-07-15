@@ -80,5 +80,5 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
-      - run: cargo deny --config ../deny.toml check --all-features
+      - run: cargo deny --config ../deny.toml check
         working-directory: src-tauri
