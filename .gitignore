@@ -1,0 +1,23 @@
+node_modules/
+dist/
+target/
+src-tauri/target/
+.DS_Store
+*.log
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+coverage/
+artifacts/
+*.db
+*.db-shm
+*.db-wal
+
+# This desktop-only project keeps only the macOS/Windows Tauri icon set.
+src-tauri/icons/android/
+src-tauri/icons/ios/
+src-tauri/icons/StoreLogo.png
+src-tauri/icons/Square*.png
+src-tauri/icons/64x64.png

@@ -1,0 +1,103 @@
+name: Release preview installers
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-14
+            target: aarch64-apple-darwin
+            bundles: dmg
+            label: macos-arm64
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+            label: windows-x64
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run icons
+      - name: Build Hook helper sidecar
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release --bin codex-turn-chime-hook --target ${{ matrix.target }}
+      - name: Stage target-triple sidecar
+        run: node scripts/stage-sidecar.mjs ${{ matrix.target }} release
+      - name: Build and attach installers to a draft prerelease
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: CodexTurnChime ${{ github.ref_name }}
+          releaseBody: |
+            Independent open-source beta. Not affiliated with, endorsed by, or sponsored by OpenAI.
+
+            This prerelease is unsigned: macOS uses ad-hoc signing and Windows installers have no Authenticode certificate. Verify SHA-256 checksums, SBOMs, and GitHub build provenance. Do not globally disable operating-system security features.
+          releaseDraft: true
+          prerelease: true
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+      - name: Prepare artifact directory
+        shell: bash
+        run: mkdir -p artifacts
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: src-tauri/target/${{ matrix.target }}/release/bundle
+          format: spdx-json
+          output-file: artifacts/CodexTurnChime-${{ matrix.label }}.spdx.json
+          upload-artifact: false
+      - name: Generate macOS SHA-256 file
+        if: runner.os == 'macOS'
+        shell: bash
+        run: find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -type f -name '*.dmg' -exec shasum -a 256 {} \; > artifacts/SHA256SUMS-${{ matrix.label }}.txt
+      - name: Generate Windows SHA-256 file
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Recurse "src-tauri/target/${{ matrix.target }}/release/bundle" -Include *.exe,*.msi
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLower()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content "artifacts/SHA256SUMS-${{ matrix.label }}.txt"
+      - name: Attest macOS installer
+        if: runner.os == 'macOS'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+      - name: Attest Windows installers
+        if: runner.os == 'Windows'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+      - name: Attach checksums and SBOM
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: true
+          files: artifacts/*

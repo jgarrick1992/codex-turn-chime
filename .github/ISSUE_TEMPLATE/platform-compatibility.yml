@@ -1,0 +1,24 @@
+name: Platform compatibility
+description: Report installation, startup, tray, audio, or packaging behavior
+title: "platform: "
+labels: ["area: packaging", "needs: triage"]
+body:
+  - type: dropdown
+    id: platform
+    attributes: { label: Supported target, options: ["macOS 13+ Apple Silicon", "Windows 11 x64"] }
+    validations: { required: true }
+  - type: input
+    id: os
+    attributes: { label: Exact OS version, placeholder: "macOS 15.5 / Windows 11 24H2" }
+    validations: { required: true }
+  - type: dropdown
+    id: area
+    attributes: { label: Area, options: [Installer, Gatekeeper/SmartScreen, Startup, Tray, Notifications, Audio, File picker, Other] }
+    validations: { required: true }
+  - type: textarea
+    id: details
+    attributes: { label: Details and reproduction steps }
+    validations: { required: true }
+  - type: input
+    id: checksum
+    attributes: { label: "Did the SHA-256 checksum match?", placeholder: Yes / No / Not checked }

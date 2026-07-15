@@ -1,0 +1,8 @@
+{
+  "session_id": "fixture-session",
+  "turn_id": "fixture-turn-1",
+  "cwd": "/fixture/project",
+  "hook_event_name": "UserPromptSubmit",
+  "model": "fixture-model",
+  "permission_mode": "default"
+}

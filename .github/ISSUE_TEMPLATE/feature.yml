@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a scoped product improvement
+title: "feat: "
+labels: ["type: feature", "needs: triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes: { label: Problem, description: "What user problem should this solve?" }
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes: { label: Proposed behavior, description: Describe the smallest useful outcome. }
+    validations: { required: true }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["Monitoring", "Hook integration", "Sounds", "Desktop UI", "Packaging", "Documentation", "Other"]
+    validations: { required: true }
+  - type: textarea
+    id: privacy
+    attributes: { label: Privacy and security impact, description: "Does it add data, permissions, network access, or task control?" }
+    validations: { required: true }

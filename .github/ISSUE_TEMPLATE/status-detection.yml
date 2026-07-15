@@ -1,0 +1,31 @@
+name: Status detection error
+description: Report an incorrect Running, Needs input, Ready, Stopped, Blocked, or Unknown state
+title: "monitor: "
+labels: ["type: bug", "area: monitoring", "needs: triage"]
+body:
+  - type: markdown
+    attributes:
+      value: "Never attach raw transcript lines. Use synthetic structural examples with all content fields removed."
+  - type: dropdown
+    id: source
+    attributes: { label: Source, options: ["Official Hook", "Experimental transcript watcher"] }
+    validations: { required: true }
+  - type: dropdown
+    id: expected
+    attributes: { label: Expected state, options: [Running, Needs input, Ready, Stopped, Blocked, Unknown] }
+    validations: { required: true }
+  - type: dropdown
+    id: actual
+    attributes: { label: Actual state, options: [Running, Needs input, Ready, Stopped, Blocked, Unknown] }
+    validations: { required: true }
+  - type: textarea
+    id: sequence
+    attributes: { label: Synthetic event sequence, description: List only event names, timestamps, and privacy-safe reason codes. }
+    validations: { required: true }
+  - type: checkboxes
+    id: interrupted
+    attributes:
+      label: Interruption rule
+      options:
+        - label: I understand a user interruption must be reported as Stopped, never Blocked.
+          required: true

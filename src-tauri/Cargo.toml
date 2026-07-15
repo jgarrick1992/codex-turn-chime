@@ -1,0 +1,53 @@
+[package]
+name = "codex-turn-chime"
+version = "0.1.0-beta.1"
+description = "Independent local task status and sound notifier for Codex"
+authors = ["CodexTurnChime contributors"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/jgarrick1992/codex-turn-chime"
+rust-version = "1.77"
+default-run = "CodexTurnChime"
+
+[lib]
+name = "codex_turn_chime_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "CodexTurnChime"
+path = "src/main.rs"
+
+[[bin]]
+name = "codex-turn-chime-hook"
+path = "src/bin/codex-turn-chime-hook.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6"
+fs2 = "0.4"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+tempfile = "3"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+walkdir = "2"
+
+[dev-dependencies]
+pretty_assertions = "1"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
