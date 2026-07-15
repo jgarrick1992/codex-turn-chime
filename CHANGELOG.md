@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Install Codex lifecycle handlers into the supported `hooks.json` configuration layer so Hook events can reach the local monitor.
 - Restore the hidden main window from the macOS Dock, a tray-icon left click, the tray menu, or a second application launch after the window is closed.
 - Stage the target sidecar placeholder before compiling the Hook helper so clean macOS and Windows build environments can package the app.
+- Build the frontend distribution before compiling release binaries on clean GitHub runners.
 
 [Unreleased]: https://github.com/jgarrick1992/codex-turn-chime/compare/v0.1.0-beta.2...HEAD
 [0.1.0-beta.2]: https://github.com/jgarrick1992/codex-turn-chime/releases/tag/v0.1.0-beta.2
