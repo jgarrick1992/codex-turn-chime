@@ -76,7 +76,9 @@ impl Database {
         let transaction = connection.transaction()?;
         let mut accepted = Vec::new();
         for event in events {
-            event.validate().map_err(|message| AppError::InvalidConfig(message.into()))?;
+            event
+                .validate()
+                .map_err(|message| AppError::InvalidConfig(message.into()))?;
             let changed = transaction.execute(
                 "INSERT OR IGNORE INTO monitor_events
                  (event_id, schema_version, source, session_id, turn_id, kind, occurred_at, cwd, reason, received_at)
@@ -140,14 +142,19 @@ impl Database {
     }
 
     pub fn clear_history(&self) -> AppResult<()> {
-        self.connect()?.execute_batch("DELETE FROM task_states; DELETE FROM monitor_events; DELETE FROM watcher_checkpoints;")?;
+        self.connect()?.execute_batch(
+            "DELETE FROM task_states; DELETE FROM monitor_events; DELETE FROM watcher_checkpoints;",
+        )?;
         Ok(())
     }
 
     pub fn cleanup_retention(&self, days: u16) -> AppResult<()> {
         let cutoff = Utc::now() - chrono::Duration::days(i64::from(days));
         let connection = self.connect()?;
-        connection.execute("DELETE FROM monitor_events WHERE occurred_at < ?1", [cutoff.to_rfc3339()])?;
+        connection.execute(
+            "DELETE FROM monitor_events WHERE occurred_at < ?1",
+            [cutoff.to_rfc3339()],
+        )?;
         connection.execute(
             "DELETE FROM task_states WHERE NOT EXISTS (
               SELECT 1 FROM monitor_events e WHERE e.session_id = task_states.session_id AND e.turn_id = task_states.turn_id
@@ -180,22 +187,32 @@ impl Database {
     }
 
     pub fn is_ready(&self) -> bool {
-        self.connect().and_then(|connection| connection.query_row("SELECT 1", [], |_| Ok(() )).map_err(AppError::from)).is_ok()
+        self.connect()
+            .and_then(|connection| {
+                connection
+                    .query_row("SELECT 1", [], |_| Ok(()))
+                    .map_err(AppError::from)
+            })
+            .is_ok()
     }
 }
 
 fn parse_time(value: String) -> rusqlite::Result<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(&value)
         .map(|value| value.with_timezone(&Utc))
-        .map_err(|error| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error)))
+        .map_err(|error| {
+            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error))
+        })
 }
 
 fn parse_kind(value: String) -> rusqlite::Result<MonitorKind> {
-    MonitorKind::parse_exact(&value).ok_or_else(|| rusqlite::Error::InvalidColumnType(0, value, rusqlite::types::Type::Text))
+    MonitorKind::parse_exact(&value)
+        .ok_or_else(|| rusqlite::Error::InvalidColumnType(0, value, rusqlite::types::Type::Text))
 }
 
 fn parse_source(value: String) -> rusqlite::Result<MonitorSource> {
-    MonitorSource::parse_exact(&value).ok_or_else(|| rusqlite::Error::InvalidColumnType(0, value, rusqlite::types::Type::Text))
+    MonitorSource::parse_exact(&value)
+        .ok_or_else(|| rusqlite::Error::InvalidColumnType(0, value, rusqlite::types::Type::Text))
 }
 
 fn snapshot_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TaskSnapshot> {
@@ -215,7 +232,10 @@ fn snapshot_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TaskSnapshot> 
 fn event_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<MonitorEvent> {
     let schema_version = row.get::<_, u8>(1)?;
     if schema_version != MONITOR_SCHEMA_VERSION {
-        return Err(rusqlite::Error::IntegralValueOutOfRange(1, i64::from(schema_version)));
+        return Err(rusqlite::Error::IntegralValueOutOfRange(
+            1,
+            i64::from(schema_version),
+        ));
     }
     Ok(MonitorEvent {
         event_id: row.get(0)?,
@@ -230,7 +250,11 @@ fn event_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<MonitorEvent> {
     })
 }
 
-fn load_snapshot(transaction: &Transaction<'_>, session_id: &str, turn_id: &str) -> AppResult<Option<TaskSnapshot>> {
+fn load_snapshot(
+    transaction: &Transaction<'_>,
+    session_id: &str,
+    turn_id: &str,
+) -> AppResult<Option<TaskSnapshot>> {
     transaction
         .query_row(
             "SELECT session_id, turn_id, current_kind, last_event_id, last_event_at, cwd, source, reason, is_read
@@ -273,7 +297,13 @@ mod tests {
     fn deduplicates_event_ids() {
         let dir = tempfile::tempdir().unwrap();
         let db = Database::open(dir.path().join("test.db")).unwrap();
-        let event = MonitorEvent::new_hook("s".into(), "t".into(), MonitorKind::Running, "/work".into(), "test");
+        let event = MonitorEvent::new_hook(
+            "s".into(),
+            "t".into(),
+            MonitorKind::Running,
+            "/work".into(),
+            "test",
+        );
         assert_eq!(db.record_events(&[event.clone()]).unwrap().len(), 1);
         assert!(db.record_events(&[event]).unwrap().is_empty());
         assert_eq!(db.list_tasks().unwrap().len(), 1);

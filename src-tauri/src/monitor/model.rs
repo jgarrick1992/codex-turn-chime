@@ -62,7 +62,6 @@ impl MonitorKind {
             _ => None,
         }
     }
-
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

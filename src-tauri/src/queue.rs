@@ -6,16 +6,17 @@ use std::{
 
 use fs2::FileExt;
 
-use crate::{
-    error::AppResult,
-    monitor::MonitorEvent,
-};
+use crate::{error::AppResult, monitor::MonitorEvent};
 
 pub fn append(path: &Path, event: &MonitorEvent) -> AppResult<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let mut file = OpenOptions::new().create(true).read(true).append(true).open(path)?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .append(true)
+        .open(path)?;
     file.lock_exclusive()?;
     let result = (|| -> AppResult<()> {
         serde_json::to_writer(&mut file, event)?;
@@ -98,7 +99,13 @@ mod tests {
     fn preserves_partial_jsonl_line() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("queue.jsonl");
-        let event = MonitorEvent::new_hook("s".into(), "t".into(), MonitorKind::Running, "/work".into(), "test");
+        let event = MonitorEvent::new_hook(
+            "s".into(),
+            "t".into(),
+            MonitorKind::Running,
+            "/work".into(),
+            "test",
+        );
         append(&path, &event).unwrap();
         let mut file = OpenOptions::new().append(true).open(&path).unwrap();
         file.write_all(b"{\"schema_version\":").unwrap();

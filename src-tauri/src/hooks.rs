@@ -36,7 +36,11 @@ pub fn hook_config_path() -> AppResult<PathBuf> {
 
 pub fn helper_path() -> AppResult<PathBuf> {
     let current = std::env::current_exe()?;
-    let name = if cfg!(windows) { "codex-turn-chime-hook.exe" } else { "codex-turn-chime-hook" };
+    let name = if cfg!(windows) {
+        "codex-turn-chime-hook.exe"
+    } else {
+        "codex-turn-chime-hook"
+    };
     Ok(current.with_file_name(name))
 }
 
@@ -72,7 +76,9 @@ fn load_config(path: &Path) -> AppResult<Value> {
     }
     let value: Value = serde_json::from_slice(&fs::read(path)?)?;
     if !value.is_object() {
-        return Err(AppError::InvalidConfig("Codex settings root must be a JSON object".into()));
+        return Err(AppError::InvalidConfig(
+            "Codex settings root must be a JSON object".into(),
+        ));
     }
     validate_hooks_shape(&value)?;
     Ok(value)
@@ -96,10 +102,9 @@ fn validate_hooks_shape(root: &Value) -> AppResult<()> {
             let group = group.as_object().ok_or_else(|| {
                 AppError::InvalidConfig(format!("hooks.{event} entries must be JSON objects"))
             })?;
-            let handlers = group
-                .get("hooks")
-                .and_then(Value::as_array)
-                .ok_or_else(|| AppError::InvalidConfig(format!("hooks.{event}[].hooks must be a JSON array")))?;
+            let handlers = group.get("hooks").and_then(Value::as_array).ok_or_else(|| {
+                AppError::InvalidConfig(format!("hooks.{event}[].hooks must be a JSON array"))
+            })?;
             if handlers.iter().any(|handler| !handler.is_object()) {
                 return Err(AppError::InvalidConfig(format!(
                     "hooks.{event}[].hooks entries must be JSON objects"
@@ -196,7 +201,12 @@ fn remove_handlers(mut root: Value) -> AppResult<Value> {
                 handlers.retain(|handler| !is_our_handler(handler));
             }
         }
-        groups.retain(|group| group.get("hooks").and_then(Value::as_array).map_or(true, |handlers| !handlers.is_empty()));
+        groups.retain(|group| {
+            group
+                .get("hooks")
+                .and_then(Value::as_array)
+                .map_or(true, |handlers| !handlers.is_empty())
+        });
     }
     Ok(root)
 }
@@ -209,12 +219,25 @@ fn diff(before: &str, after: &str) -> String {
     if before == after {
         return "No changes.\n".into();
     }
-    let removed = before.lines().map(|line| format!("- {line}")).collect::<Vec<_>>().join("\n");
-    let added = after.lines().map(|line| format!("+ {line}")).collect::<Vec<_>>().join("\n");
+    let removed = before
+        .lines()
+        .map(|line| format!("- {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let added = after
+        .lines()
+        .map(|line| format!("+ {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
     format!("--- current\n+++ proposed\n{removed}\n{added}\n")
 }
 
-fn make_preview(path: &Path, before: Value, after: Value, backup_path: Option<PathBuf>) -> AppResult<HookPreview> {
+fn make_preview(
+    path: &Path,
+    before: Value,
+    after: Value,
+    backup_path: Option<PathBuf>,
+) -> AppResult<HookPreview> {
     let before_json = pretty(&before)?;
     let after_json = pretty(&after)?;
     Ok(HookPreview {
@@ -248,7 +271,9 @@ fn backup(path: &Path, backup_dir: &Path) -> AppResult<Option<PathBuf>> {
 }
 
 fn atomic_write(path: &Path, value: &Value) -> AppResult<()> {
-    let parent = path.parent().ok_or_else(|| AppError::Path("Codex settings parent".into()))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| AppError::Path("Codex settings parent".into()))?;
     fs::create_dir_all(parent)?;
     let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
     temporary.write_all(pretty(value)?.as_bytes())?;
@@ -257,7 +282,9 @@ fn atomic_write(path: &Path, value: &Value) -> AppResult<()> {
     temporary.persist(path).map_err(|error| error.error)?;
     let verified = load_config(path)?;
     if &verified != value {
-        return Err(AppError::InvalidConfig("Hook config verification failed after atomic replace".into()));
+        return Err(AppError::InvalidConfig(
+            "Hook config verification failed after atomic replace".into(),
+        ));
     }
     Ok(())
 }
@@ -266,11 +293,18 @@ pub fn install(backup_dir: &Path) -> AppResult<HookPreview> {
     let path = config_path()?;
     let helper = helper_path()?;
     if !helper.is_file() {
-        return Err(AppError::Path(format!("Hook helper not found at {}", helper.display())));
+        return Err(AppError::Path(format!(
+            "Hook helper not found at {}",
+            helper.display()
+        )));
     }
     let before = load_config(&path)?;
     let after = add_handlers(before.clone(), &helper)?;
-    let backup_path = if before == after { None } else { backup(&path, backup_dir)? };
+    let backup_path = if before == after {
+        None
+    } else {
+        backup(&path, backup_dir)?
+    };
     if before != after {
         atomic_write(&path, &after)?;
     }
@@ -281,7 +315,11 @@ pub fn uninstall(backup_dir: &Path) -> AppResult<HookPreview> {
     let path = config_path()?;
     let before = load_config(&path)?;
     let after = remove_handlers(before.clone())?;
-    let backup_path = if before == after { None } else { backup(&path, backup_dir)? };
+    let backup_path = if before == after {
+        None
+    } else {
+        backup(&path, backup_dir)?
+    };
     if before != after {
         atomic_write(&path, &after)?;
     }
@@ -289,7 +327,9 @@ pub fn uninstall(backup_dir: &Path) -> AppResult<HookPreview> {
 }
 
 pub fn is_installed() -> bool {
-    config_path().and_then(|path| load_config(&path)).is_ok_and(|root| all_handlers_installed(&root))
+    config_path()
+        .and_then(|path| load_config(&path))
+        .is_ok_and(|root| all_handlers_installed(&root))
 }
 
 #[cfg(test)]
