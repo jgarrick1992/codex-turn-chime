@@ -77,6 +77,8 @@ jobs:
           tool: cargo-audit
       - run: cargo audit
         working-directory: src-tauri
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: taiki-e/install-action@v2
         with:
-          manifest-path: src-tauri/Cargo.toml
+          tool: cargo-deny
+      - run: cargo deny check --config ../deny.toml --all-features
+        working-directory: src-tauri
