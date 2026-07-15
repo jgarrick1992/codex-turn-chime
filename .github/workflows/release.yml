@@ -102,12 +102,12 @@ jobs:
           $lines | Set-Content "artifacts/SHA256SUMS-${{ matrix.label }}.txt"
       - name: Attest macOS installer
         if: runner.os == 'macOS'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
       - name: Attest Windows installer
         if: runner.os == 'Windows'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
       - name: Attach checksums and SBOM
