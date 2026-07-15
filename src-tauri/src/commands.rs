@@ -9,8 +9,7 @@ use crate::{
     error::{AppError, AppResult},
     hooks::{self, HookPreview},
     monitor::{MonitorEvent, TaskSnapshot},
-    paths,
-    queue,
+    paths, queue,
     settings::{self, AppSettings},
     AppState,
 };
@@ -41,7 +40,11 @@ pub fn list_tasks(state: State<'_, AppState>) -> AppResult<Vec<TaskSnapshot>> {
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn list_events(state: State<'_, AppState>, session_id: String, turn_id: String) -> AppResult<Vec<MonitorEvent>> {
+pub fn list_events(
+    state: State<'_, AppState>,
+    session_id: String,
+    turn_id: String,
+) -> AppResult<Vec<MonitorEvent>> {
     state.database.list_events(&session_id, &turn_id)
 }
 
@@ -61,12 +64,20 @@ pub fn get_settings(state: State<'_, AppState>) -> AppResult<AppSettings> {
 }
 
 #[tauri::command]
-pub fn save_settings(app: AppHandle, state: State<'_, AppState>, settings: AppSettings) -> AppResult<AppSettings> {
+pub fn save_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings: AppSettings,
+) -> AppResult<AppSettings> {
     settings.validate()?;
     if settings.launch_at_login {
-        app.autolaunch().enable().map_err(|error| AppError::InvalidConfig(error.to_string()))?;
+        app.autolaunch()
+            .enable()
+            .map_err(|error| AppError::InvalidConfig(error.to_string()))?;
     } else if app.autolaunch().is_enabled().unwrap_or(false) {
-        app.autolaunch().disable().map_err(|error| AppError::InvalidConfig(error.to_string()))?;
+        app.autolaunch()
+            .disable()
+            .map_err(|error| AppError::InvalidConfig(error.to_string()))?;
     }
     let old = settings::load(&state.paths.settings).unwrap_or_default();
     if settings.transcript_watcher_enabled && !old.transcript_watcher_enabled {
@@ -125,13 +136,21 @@ pub fn read_sound_file(path: String) -> AppResult<SoundPayload> {
     let path = Path::new(&path);
     let metadata = fs::metadata(path).map_err(|error| AppError::Sound(error.to_string()))?;
     if !metadata.is_file() || metadata.len() > 25 * 1024 * 1024 {
-        return Err(AppError::Sound("sound must be a readable file no larger than 25 MiB".into()));
+        return Err(AppError::Sound(
+            "sound must be a readable file no larger than 25 MiB".into(),
+        ));
     }
     let bytes = fs::read(path).map_err(|error| AppError::Sound(error.to_string()))?;
-    let extension = path.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
     let mime = match extension.as_str() {
         "wav" if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WAVE" => "audio/wav",
-        "mp3" if bytes.starts_with(b"ID3") || bytes.first().is_some_and(|first| *first == 0xff) => "audio/mpeg",
+        "mp3" if bytes.starts_with(b"ID3") || bytes.first().is_some_and(|first| *first == 0xff) => {
+            "audio/mpeg"
+        }
         "wav" | "mp3" => return Err(AppError::Sound("file signature does not match WAV or MP3".into())),
         _ => return Err(AppError::Sound("only WAV and MP3 files are supported".into())),
     };

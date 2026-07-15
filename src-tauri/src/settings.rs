@@ -54,14 +54,18 @@ impl AppSettings {
             return Err(AppError::InvalidConfig("language must be en or zh-CN".into()));
         }
         if self.history_retention_days != 30 {
-            return Err(AppError::InvalidConfig("history_retention_days must be 30 in v0.1".into()));
+            return Err(AppError::InvalidConfig(
+                "history_retention_days must be 30 in v0.1".into(),
+            ));
         }
         for (name, sound) in [
             ("needs_input_sound", &self.needs_input_sound),
             ("ready_sound", &self.ready_sound),
         ] {
             if !(0.0..=1.0).contains(&sound.volume) {
-                return Err(AppError::InvalidConfig(format!("{name}.volume must be between 0 and 1")));
+                return Err(AppError::InvalidConfig(format!(
+                    "{name}.volume must be between 0 and 1"
+                )));
             }
         }
         Ok(())
@@ -79,7 +83,9 @@ pub fn load(path: &Path) -> AppResult<AppSettings> {
 
 pub fn save(path: &Path, settings: &AppSettings) -> AppResult<()> {
     settings.validate()?;
-    let parent = path.parent().ok_or_else(|| AppError::Path("settings parent".into()))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| AppError::Path("settings parent".into()))?;
     fs::create_dir_all(parent)?;
     let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
     temporary.write_all(&serde_json::to_vec_pretty(settings)?)?;

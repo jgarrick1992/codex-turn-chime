@@ -34,7 +34,10 @@ pub fn reduce_state(current: Option<&TaskSnapshot>, event: &MonitorEvent) -> Tas
         cwd: event.cwd.clone(),
         source: event.source,
         reason: event.reason.clone(),
-        is_read: !matches!(event.kind, MonitorKind::NeedsInput | MonitorKind::Ready | MonitorKind::Blocked),
+        is_read: !matches!(
+            event.kind,
+            MonitorKind::NeedsInput | MonitorKind::Ready | MonitorKind::Blocked
+        ),
     }
 }
 

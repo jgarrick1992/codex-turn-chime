@@ -20,6 +20,13 @@
 | Arbitrary file read | File dialog plus backend WAV/MP3 signature and 25 MiB limit |
 | WebView command execution | No shell plugin, strict invoke allowlist, minimal capabilities, CSP |
 | Dependency compromise | Lockfiles, Dependabot, CodeQL, cargo-audit, cargo-deny, SBOM, checksums, attestations |
+
+`cargo-audit` remains a blocking vulnerability check. `cargo-deny` explicitly
+ignores the four RustSec unmaintained-crate advisories
+(`RUSTSEC-2025-0075`, `RUSTSEC-2025-0080`, `RUSTSEC-2025-0081`,
+`RUSTSEC-2025-0098`, and `RUSTSEC-2025-0100`) because the Tauri dependency graph currently includes the
+`rust-unic` crates, for which RustSec records no safe upgrade; this narrow
+exception does not suppress other vulnerability advisories.
 | Unsigned beta impersonation | Draft/manual release, SHA-256, provenance, explicit signing warning |
 
 ## Deliberate limitations

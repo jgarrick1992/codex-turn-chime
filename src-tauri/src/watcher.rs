@@ -74,8 +74,14 @@ impl WatcherEngine {
         let metadata = path.metadata()?;
         let identity = file_identity(path, &metadata)?;
         let path_text = path.to_string_lossy().into_owned();
-        let (saved_identity, saved_offset) = database.checkpoint(&path_text)?.unwrap_or_else(|| (identity.clone(), 0));
-        let mut offset = if saved_identity == identity && metadata.len() >= saved_offset { saved_offset } else { 0 };
+        let (saved_identity, saved_offset) = database
+            .checkpoint(&path_text)?
+            .unwrap_or_else(|| (identity.clone(), 0));
+        let mut offset = if saved_identity == identity && metadata.len() >= saved_offset {
+            saved_offset
+        } else {
+            0
+        };
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(offset))?;
@@ -106,7 +112,13 @@ impl WatcherEngine {
         Ok(events)
     }
 
-    fn parse_line(&mut self, line: &str, session_id: &str, file_identity: &str, offset: u64) -> AppResult<Option<MonitorEvent>> {
+    fn parse_line(
+        &mut self,
+        line: &str,
+        session_id: &str,
+        file_identity: &str,
+        offset: u64,
+    ) -> AppResult<Option<MonitorEvent>> {
         let envelope: TranscriptEnvelope = serde_json::from_str(line.trim_end())
             .map_err(|error| AppError::IncompatibleFormat(format!("{ADAPTER_VERSION}: {error}")))?;
         let occurred_at = DateTime::parse_from_rfc3339(&envelope.timestamp)
@@ -116,23 +128,39 @@ impl WatcherEngine {
             return Ok(None);
         }
         if !matches!(envelope.record_type.as_str(), "event_msg" | "response_item") {
-            return Err(AppError::IncompatibleFormat(format!("{ADAPTER_VERSION}: unknown record type")));
+            return Err(AppError::IncompatibleFormat(format!(
+                "{ADAPTER_VERSION}: unknown record type"
+            )));
         }
         let payload_type = envelope
             .payload
             .get("type")
             .and_then(Value::as_str)
-            .ok_or_else(|| AppError::IncompatibleFormat(format!("{ADAPTER_VERSION}: payload.type is required")))?;
+            .ok_or_else(|| {
+                AppError::IncompatibleFormat(format!("{ADAPTER_VERSION}: payload.type is required"))
+            })?;
 
         let fields = match (envelope.record_type.as_str(), payload_type) {
-            ("event_msg", "task_started") => Some(event_fields(&envelope.payload, MonitorKind::Running, "task_started")?),
-            ("event_msg", "task_complete") => Some(event_fields(&envelope.payload, MonitorKind::Ready, "task_complete")?),
+            ("event_msg", "task_started") => Some(event_fields(
+                &envelope.payload,
+                MonitorKind::Running,
+                "task_started",
+            )?),
+            ("event_msg", "task_complete") => Some(event_fields(
+                &envelope.payload,
+                MonitorKind::Ready,
+                "task_complete",
+            )?),
             ("event_msg", "turn_aborted") => {
                 let reason = required_string(&envelope.payload, "reason")?;
                 let (kind, safe_reason) = match reason {
                     "interrupted" => (MonitorKind::Stopped, "interrupted"),
                     "failed" => (MonitorKind::Blocked, "explicit_failure"),
-                    _ => return Err(AppError::IncompatibleFormat(format!("{ADAPTER_VERSION}: unknown turn_aborted reason"))),
+                    _ => {
+                        return Err(AppError::IncompatibleFormat(format!(
+                            "{ADAPTER_VERSION}: unknown turn_aborted reason"
+                        )))
+                    }
                 };
                 Some(event_fields(&envelope.payload, kind, safe_reason)?)
             }
@@ -140,7 +168,8 @@ impl WatcherEngine {
                 if required_string(&envelope.payload, "name")? != "request_user_input" {
                     None
                 } else {
-                    let (turn_id, cwd, _) = event_fields(&envelope.payload, MonitorKind::NeedsInput, "request_user_input")?;
+                    let (turn_id, cwd, _) =
+                        event_fields(&envelope.payload, MonitorKind::NeedsInput, "request_user_input")?;
                     let call_id = required_string(&envelope.payload, "call_id")?.to_owned();
                     self.pending_input_calls
                         .entry((session_id.to_owned(), turn_id.clone()))
@@ -194,7 +223,11 @@ fn required_string<'a>(value: &'a Value, key: &str) -> AppResult<&'a str> {
         .ok_or_else(|| AppError::IncompatibleFormat(format!("{ADAPTER_VERSION}: payload.{key} is required")))
 }
 
-fn event_fields(value: &Value, kind: MonitorKind, reason: &'static str) -> AppResult<(String, String, (MonitorKind, &'static str))> {
+fn event_fields(
+    value: &Value,
+    kind: MonitorKind,
+    reason: &'static str,
+) -> AppResult<(String, String, (MonitorKind, &'static str))> {
     Ok((
         required_string(value, "turn_id")?.to_owned(),
         required_string(value, "cwd")?.to_owned(),
@@ -215,11 +248,20 @@ fn file_identity(path: &Path, metadata: &std::fs::Metadata) -> AppResult<String>
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
-        return Ok(format!("{}:{}:{}", canonical.display(), metadata.dev(), metadata.ino()));
+        Ok(format!(
+            "{}:{}:{}",
+            canonical.display(),
+            metadata.dev(),
+            metadata.ino()
+        ))
     }
     #[cfg(not(unix))]
     {
-        let created = metadata.created().ok().and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |value| value.as_nanos());
+        let created = metadata
+            .created()
+            .ok()
+            .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or(0, |value| value.as_nanos());
         Ok(format!("{}:{created}", canonical.display()))
     }
 }
@@ -241,8 +283,14 @@ mod tests {
         let mut engine = WatcherEngine::default();
         let call = r#"{"timestamp":"2026-01-01T00:00:00Z","type":"response_item","payload":{"type":"function_call","name":"request_user_input","call_id":"c","turn_id":"t","cwd":"/work"}}"#;
         let output = r#"{"timestamp":"2026-01-01T00:00:01Z","type":"response_item","payload":{"type":"function_call_output","call_id":"c","turn_id":"t","cwd":"/work"}}"#;
-        assert_eq!(engine.parse_line(call, "s", "file", 1).unwrap().unwrap().kind, MonitorKind::NeedsInput);
-        assert_eq!(engine.parse_line(output, "s", "file", 2).unwrap().unwrap().kind, MonitorKind::Running);
+        assert_eq!(
+            engine.parse_line(call, "s", "file", 1).unwrap().unwrap().kind,
+            MonitorKind::NeedsInput
+        );
+        assert_eq!(
+            engine.parse_line(output, "s", "file", 2).unwrap().unwrap().kind,
+            MonitorKind::Running
+        );
         assert!(engine.parse_line(output, "s", "file", 3).unwrap().is_none());
     }
 
@@ -250,6 +298,9 @@ mod tests {
     fn old_key_is_not_accepted_as_alias() {
         let mut engine = WatcherEngine::default();
         let line = r#"{"timestamp":"2026-01-01T00:00:00Z","type":"event_msg","payload":{"type":"task_started","turnId":"t","cwd":"/work"}}"#;
-        assert!(matches!(engine.parse_line(line, "s", "file", 1), Err(AppError::IncompatibleFormat(_))));
+        assert!(matches!(
+            engine.parse_line(line, "s", "file", 1),
+            Err(AppError::IncompatibleFormat(_))
+        ));
     }
 }

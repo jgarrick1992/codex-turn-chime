@@ -1,7 +1,7 @@
 mod commands;
 mod error;
-mod hooks;
 pub mod hook_helper;
+mod hooks;
 mod monitor;
 mod paths;
 mod persistence;
@@ -9,7 +9,11 @@ mod queue;
 mod settings;
 mod watcher;
 
-use std::{sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -31,7 +35,12 @@ pub struct AppState {
     watcher_health: SharedWatcherHealth,
 }
 
-fn start_monitor_worker(app: tauri::AppHandle, paths: AppPaths, database: Database, health: SharedWatcherHealth) {
+fn start_monitor_worker(
+    app: tauri::AppHandle,
+    paths: AppPaths,
+    database: Database,
+    health: SharedWatcherHealth,
+) {
     thread::spawn(move || {
         let mut watcher = WatcherEngine::default();
         let mut last_watcher_scan = Instant::now() - Duration::from_secs(5);
@@ -40,7 +49,10 @@ fn start_monitor_worker(app: tauri::AppHandle, paths: AppPaths, database: Databa
             match queue::drain(&paths.queue) {
                 Ok(drained) => {
                     if drained.rejected_lines > 0 {
-                        tracing::warn!(count = drained.rejected_lines, "rejected invalid local queue records");
+                        tracing::warn!(
+                            count = drained.rejected_lines,
+                            "rejected invalid local queue records"
+                        );
                     }
                     if !drained.events.is_empty() {
                         match database.record_events(&drained.events) {
@@ -92,7 +104,9 @@ fn start_monitor_worker(app: tauri::AppHandle, paths: AppPaths, database: Databa
 
             if last_cleanup.elapsed() >= Duration::from_secs(3600) {
                 last_cleanup = Instant::now();
-                let days = settings::load(&paths.settings).unwrap_or_default().history_retention_days;
+                let days = settings::load(&paths.settings)
+                    .unwrap_or_default()
+                    .history_retention_days;
                 if let Err(error) = database.cleanup_retention(days) {
                     tracing::warn!(%error, "history retention cleanup failed");
                 }
@@ -120,7 +134,8 @@ pub fn run() {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_target(false)
         .try_init();
-    let (paths, database, watcher_health) = initialize().expect("failed to initialize CodexTurnChime local storage");
+    let (paths, database, watcher_health) =
+        initialize().expect("failed to initialize CodexTurnChime local storage");
     let worker_paths = paths.clone();
     let worker_database = database.clone();
     let worker_health = watcher_health.clone();
@@ -134,8 +149,15 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--background"])))
-        .manage(AppState { paths, database, watcher_health })
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--background"]),
+        ))
+        .manage(AppState {
+            paths,
+            database,
+            watcher_health,
+        })
         .setup(move |app| {
             let open = MenuItem::with_id(app, "open", "Open Dashboard", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Mute / Unmute", true, None::<&str>)?;
@@ -172,7 +194,12 @@ pub fn run() {
                     let _ = window.hide();
                 }
             }
-            start_monitor_worker(app.handle().clone(), worker_paths.clone(), worker_database.clone(), worker_health.clone());
+            start_monitor_worker(
+                app.handle().clone(),
+                worker_paths.clone(),
+                worker_database.clone(),
+                worker_health.clone(),
+            );
             Ok(())
         })
         .on_window_event(|window, event| {

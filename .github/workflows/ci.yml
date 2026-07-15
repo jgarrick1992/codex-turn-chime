@@ -48,6 +48,20 @@ jobs:
         with:
           workspaces: src-tauri
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - name: Stage frontend placeholder for Rust checks
+        shell: bash
+        run: |
+          mkdir -p dist
+          printf '%s\n' '<!doctype html><title>CodexTurnChime CI</title>' > dist/index.html
+      - name: Stage sidecar placeholder for Rust checks
+        shell: bash
+        run: |
+          mkdir -p src-tauri/binaries
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            : > "src-tauri/binaries/codex-turn-chime-hook-${{ matrix.target }}.exe"
+          else
+            : > "src-tauri/binaries/codex-turn-chime-hook-${{ matrix.target }}"
+          fi
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml
       - run: cargo check --manifest-path src-tauri/Cargo.toml --target ${{ matrix.target }}
@@ -58,10 +72,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
-      - uses: rustsec/audit-check@v2
+      - uses: taiki-e/install-action@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: EmbarkStudios/cargo-deny-action@v2
+          tool: cargo-audit
+      - run: cargo audit
+        working-directory: src-tauri
+      - uses: taiki-e/install-action@v2
         with:
-          manifest-path: src-tauri/Cargo.toml
+          tool: cargo-deny
+      - run: cargo deny --config ../deny.toml check
+        working-directory: src-tauri

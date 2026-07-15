@@ -22,9 +22,19 @@ fn convert(input: HookInput) -> AppResult<MonitorEvent> {
         "UserPromptSubmit" => (MonitorKind::Running, "user_prompt_submitted"),
         "PermissionRequest" => (MonitorKind::NeedsInput, "permission_requested"),
         "Stop" => (MonitorKind::Ready, "turn_stopped"),
-        event => return Err(AppError::IncompatibleFormat(format!("unsupported hook event: {event}"))),
+        event => {
+            return Err(AppError::IncompatibleFormat(format!(
+                "unsupported hook event: {event}"
+            )))
+        }
     };
-    Ok(MonitorEvent::new_hook(input.session_id, input.turn_id, kind, input.cwd, reason))
+    Ok(MonitorEvent::new_hook(
+        input.session_id,
+        input.turn_id,
+        kind,
+        input.cwd,
+        reason,
+    ))
 }
 
 pub fn run_from_reader(mut reader: impl Read) -> AppResult<()> {
