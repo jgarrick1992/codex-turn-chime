@@ -128,7 +128,15 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const tag = context.ref.replace('refs/tags/', '');
-            const { data: release } = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const release = releases.find((candidate) => candidate.tag_name === tag && candidate.draft);
+            if (!release) {
+              throw new Error(`Draft release for ${tag} was not found`);
+            }
             await github.rest.repos.updateRelease({
               owner,
               repo,
