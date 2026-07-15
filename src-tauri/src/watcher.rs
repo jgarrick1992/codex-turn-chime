@@ -253,7 +253,7 @@ fn file_identity(path: &Path, metadata: &std::fs::Metadata) -> AppResult<String>
             canonical.display(),
             metadata.dev(),
             metadata.ino()
-        ));
+        ))
     }
     #[cfg(not(unix))]
     {
