@@ -48,6 +48,11 @@ jobs:
         with:
           workspaces: src-tauri
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - name: Stage frontend placeholder for Rust checks
+        shell: bash
+        run: |
+          mkdir -p dist
+          printf '%s\n' '<!doctype html><title>CodexTurnChime CI</title>' > dist/index.html
       - name: Stage sidecar placeholder for Rust checks
         shell: bash
         run: |
