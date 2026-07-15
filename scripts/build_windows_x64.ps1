@@ -4,6 +4,8 @@ Set-StrictMode -Version Latest
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $Target = "x86_64-pc-windows-msvc"
 $TauriManifest = Join-Path $ProjectRoot "src-tauri\Cargo.toml"
+$SidecarDirectory = Join-Path $ProjectRoot "src-tauri\binaries"
+$SidecarPlaceholder = Join-Path $SidecarDirectory "codex-turn-chime-hook-$Target.exe"
 
 function Write-Step([string] $Message) {
   Write-Host "[build_windows_x64] $Message"
@@ -38,6 +40,9 @@ Write-Step "Installing locked npm dependencies..."
 Invoke-Checked { npm ci } "npm ci"
 Write-Step "Building frontend assets..."
 Invoke-Checked { npm run build } "Frontend build"
+Write-Step "Staging the sidecar placeholder required by the Tauri build script..."
+New-Item -ItemType Directory -Path $SidecarDirectory -Force | Out-Null
+[System.IO.File]::WriteAllBytes($SidecarPlaceholder, [byte[]]@())
 Write-Step "Building the release Hook sidecar for $Target..."
 Invoke-Checked { cargo build --manifest-path $TauriManifest --release --bin codex-turn-chime-hook --target $Target } "Hook sidecar build"
 Write-Step "Staging the release Hook sidecar..."

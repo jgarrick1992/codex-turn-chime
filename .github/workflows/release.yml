@@ -41,6 +41,15 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run icons
+      - name: Stage sidecar placeholder for the Tauri build script
+        shell: bash
+        run: |
+          mkdir -p src-tauri/binaries
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            : > "src-tauri/binaries/codex-turn-chime-hook-${{ matrix.target }}.exe"
+          else
+            : > "src-tauri/binaries/codex-turn-chime-hook-${{ matrix.target }}"
+          fi
       - name: Build Hook helper sidecar
         run: cargo build --manifest-path src-tauri/Cargo.toml --release --bin codex-turn-chime-hook --target ${{ matrix.target }}
       - name: Stage target-triple sidecar

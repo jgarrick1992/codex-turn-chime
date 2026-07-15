@@ -163,7 +163,7 @@ ensure_npm_dependencies() {
 
 sidecar_needs_rebuild() {
   local sidecar="$1"
-  if [[ ! -x "${sidecar}" ]]; then
+  if [[ ! -x "${sidecar}" || ! -s "${sidecar}" ]]; then
     return 0
   fi
   if [[ -n "$(find "${PROJECT_ROOT}/src-tauri/src" -type f -newer "${sidecar}" -print -quit)" ]]; then
@@ -178,6 +178,9 @@ ensure_debug_sidecar() {
   sidecar="${PROJECT_ROOT}/src-tauri/binaries/codex-turn-chime-hook-${target}"
 
   if sidecar_needs_rebuild "${sidecar}"; then
+    mkdir -p "$(dirname -- "${sidecar}")"
+    : > "${sidecar}"
+    chmod +x "${sidecar}"
     log "Building and staging the debug Hook sidecar..."
     cargo build --manifest-path "${TAURI_MANIFEST}" --bin codex-turn-chime-hook --target "${target}"
     node "${PROJECT_ROOT}/scripts/stage-sidecar.mjs" "${target}" debug
