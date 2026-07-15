@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
 
 jobs:
   frontend:
@@ -73,11 +72,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
-      - uses: rustsec/audit-check@v2
+      - uses: taiki-e/install-action@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: src-tauri
+          tool: cargo-audit
+      - run: cargo audit
+        working-directory: src-tauri
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           manifest-path: src-tauri/Cargo.toml
