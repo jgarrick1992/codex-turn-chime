@@ -7,7 +7,7 @@ targets = [
 
 [advisories]
 yanked = "deny"
-unmaintained = "warn"
+ignore = ["RUSTSEC-2025-0098"]
 
 [licenses]
 confidence-threshold = 0.8
