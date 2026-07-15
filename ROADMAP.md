@@ -1,6 +1,6 @@
 # Roadmap
 
-## v0.1.0-beta.1 — local monitoring foundation
+## v0.1.0-beta.2 — local monitoring foundation
 
 - [x] Versioned event model and deterministic state reducer
 - [x] Non-blocking Hook helper and local queue

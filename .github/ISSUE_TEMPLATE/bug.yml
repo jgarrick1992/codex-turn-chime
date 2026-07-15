@@ -8,7 +8,7 @@ body:
       value: "Do not paste prompts, answers, commands, credentials, or raw transcript content."
   - type: input
     id: version
-    attributes: { label: App version, placeholder: v0.1.0-beta.1 }
+    attributes: { label: App version, placeholder: v0.1.0-beta.2 }
     validations: { required: true }
   - type: dropdown
     id: platform

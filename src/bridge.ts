@@ -15,6 +15,7 @@ export const bridge = {
     invoke<MonitorEvent[]>("list_events", { sessionId, turnId }),
   markRead: (sessionId: string, turnId: string) =>
     invoke<void>("mark_task_read", { sessionId, turnId }),
+  markAllRead: () => invoke<void>("mark_all_tasks_read"),
   clearHistory: () => invoke<void>("clear_history"),
   getSettings: () => invoke<AppSettings>("get_settings"),
   saveSettings: (settings: AppSettings) =>
@@ -30,6 +31,8 @@ export const bridge = {
     listen<AppSettings>("settings-changed", ({ payload }) => handler(payload)),
   onWatcherDisabled: (handler: (message: string) => void): Promise<UnlistenFn> =>
     listen<string>("watcher-disabled", ({ payload }) => handler(payload)),
+  onDismissReminder: (handler: () => void): Promise<UnlistenFn> =>
+    listen("dismiss-reminder", handler),
 };
 
 export function isTauriRuntime(): boolean {

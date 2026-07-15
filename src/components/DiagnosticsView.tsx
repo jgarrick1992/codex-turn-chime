@@ -10,6 +10,7 @@ export function DiagnosticsView({ diagnostics, onRefresh }: { diagnostics: Diagn
     { label: t("eventQueue"), ok: diagnostics.queue_readable, detail: diagnostics.app_data_dir },
     { label: t("database"), ok: diagnostics.database_ready, detail: diagnostics.app_data_dir },
     { label: t("watcher"), ok: !diagnostics.watcher_enabled || diagnostics.watcher_compatible, detail: diagnostics.watcher_message || (diagnostics.watcher_enabled ? "codex-jsonl-v1" : "Disabled") },
+    { label: t("dismissReminderShortcut"), ok: !diagnostics.shortcut_configured || diagnostics.shortcut_registered, detail: diagnostics.shortcut_configured ? diagnostics.shortcut_message || diagnostics.shortcut || t("shortcutInactive") : t("shortcutDisabled") },
   ] : [];
   return (
     <main className="diagnostics-page">

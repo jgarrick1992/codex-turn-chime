@@ -1,8 +1,10 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { BellRing, CheckCircle2, FileAudio, FlaskConical, Laptop, Link2, Play, ShieldCheck, Volume2 } from "lucide-react";
+import { BellRing, CheckCircle2, FileAudio, FlaskConical, Laptop, Link2, Play, ShieldCheck, TimerReset, Volume2 } from "lucide-react";
 import { useState } from "react";
 import { useI18n } from "../i18n";
+import { isBuiltInVoiceScheme, LUMI_VOICE_SCHEME, MAX_SOUND_VOLUME } from "../sounds";
 import type { AppSettings, HookPreview, MonitorKind, SoundSetting } from "../types";
+import { ShortcutRecorder } from "./ShortcutRecorder";
 
 type Tab = "general" | "sounds" | "integration" | "privacy";
 
@@ -30,13 +32,28 @@ function SoundEditor({
     const selected = await open({ multiple: false, directory: false, filters: [{ name: "Audio", extensions: ["wav", "mp3"] }] });
     if (selected) onChange({ ...value, path: selected });
   };
+  const source = isBuiltInVoiceScheme(value.path) ? value.path : value.path ? "custom" : "chime";
+  const selectSource = (next: string) => {
+    if (next === "custom") {
+      void choose();
+      return;
+    }
+    onChange({ ...value, path: isBuiltInVoiceScheme(next) ? next : null });
+  };
   return (
     <div className="sound-editor">
       <div className="setting-icon">{kind === "needs_input" ? <BellRing /> : <CheckCircle2 />}</div>
       <div className="sound-main">
-        <div className="setting-heading"><strong>{kind === "needs_input" ? t("needsInput") : t("ready")}</strong><Toggle checked={value.enabled} onChange={(enabled) => onChange({ ...value, enabled })} label={t("enabled")} /></div>
-        <button className="file-picker" type="button" onClick={choose}><FileAudio size={16} /><span>{value.path || t("defaultSound")}</span></button>
-        <div className="volume-row"><Volume2 size={16} /><input aria-label={t("volume")} type="range" min="0" max="1" step="0.05" value={value.volume} onChange={(event) => onChange({ ...value, volume: Number(event.target.value) })} /><span>{Math.round(value.volume * 100)}%</span><button className="secondary-button compact" type="button" onClick={() => onTest(kind)}><Play size={15} />{t("test")}</button></div>
+        <div className="setting-heading"><strong>{kind === "needs_input" ? t("attentionEvents") : t("outcomeEvents")}</strong><Toggle checked={value.enabled} onChange={(enabled) => onChange({ ...value, enabled })} label={t("enabled")} /></div>
+        <div className="sound-source-row">
+          <select aria-label={t("soundSource")} value={source} onChange={(event) => selectSource(event.target.value)}>
+            <option value="chime">{t("defaultSound")}</option>
+            <option value={LUMI_VOICE_SCHEME}>{t("voiceSchemeLumi")}</option>
+            <option value="custom">{t("customSound")}</option>
+          </select>
+          <button className="file-picker" type="button" onClick={choose}><FileAudio size={16} /><span>{value.path && !isBuiltInVoiceScheme(value.path) ? value.path : t("chooseFile")}</span></button>
+        </div>
+        <div className="volume-row"><Volume2 size={16} /><input aria-label={t("volume")} type="range" min="0" max={MAX_SOUND_VOLUME} step="0.05" value={value.volume} onChange={(event) => onChange({ ...value, volume: Number(event.target.value) })} /><span className={value.volume > 1 ? "volume-boosted" : undefined}>{Math.round(value.volume * 100)}%</span><button className="secondary-button compact" type="button" onClick={() => onTest(kind)}><Play size={15} />{t("test")}</button></div>
       </div>
     </div>
   );
@@ -58,6 +75,8 @@ export function HookDiffDialog({ preview, installing, onClose, onConfirm }: { pr
 export function SettingsView({
   settings,
   hookInstalled,
+  shortcutRegistered,
+  shortcutMessage,
   onSave,
   onTestSound,
   onPreviewHook,
@@ -65,7 +84,9 @@ export function SettingsView({
 }: {
   settings: AppSettings;
   hookInstalled: boolean;
-  onSave: (settings: AppSettings) => void;
+  shortcutRegistered: boolean;
+  shortcutMessage: string | null;
+  onSave: (settings: AppSettings) => void | Promise<void>;
   onTestSound: (kind: MonitorKind) => void;
   onPreviewHook: () => void;
   onUninstallHook: () => void;
@@ -89,10 +110,11 @@ export function SettingsView({
             <>
               <div className="settings-section"><h2>{t("general")}</h2><div className="setting-row"><div><strong>{t("language")}</strong><p>English / 简体中文</p></div><select value={language} onChange={(event) => { const next = event.target.value as "en" | "zh-CN"; setLanguage(next); update("language", next); }}><option value="en">English</option><option value="zh-CN">简体中文</option></select></div></div>
               <div className="settings-section"><div className="setting-row"><div><strong>{t("launchAtLogin")}</strong><p>{t("launchAtLoginHelp")}</p></div><Toggle checked={settings.launch_at_login} onChange={(checked) => update("launch_at_login", checked)} label={t("launchAtLogin")} /></div></div>
+              <div className="settings-section"><ShortcutRecorder value={settings.dismiss_reminder_shortcut} registered={shortcutRegistered} registrationMessage={shortcutMessage} onChange={(value) => update("dismiss_reminder_shortcut", value)} /></div>
             </>
           )}
           {tab === "sounds" && (
-            <div className="settings-section"><h2>{t("sounds")}</h2><SoundEditor kind="needs_input" value={settings.needs_input_sound} onChange={(value) => update("needs_input_sound", value)} onTest={onTestSound} /><SoundEditor kind="ready" value={settings.ready_sound} onChange={(value) => update("ready_sound", value)} onTest={onTestSound} /></div>
+            <div className="settings-section"><h2>{t("sounds")}</h2><SoundEditor kind="needs_input" value={settings.needs_input_sound} onChange={(value) => update("needs_input_sound", value)} onTest={onTestSound} /><SoundEditor kind="ready" value={settings.ready_sound} onChange={(value) => update("ready_sound", value)} onTest={onTestSound} /><div className="reminder-interval-row"><div className="setting-icon"><TimerReset /></div><div><strong>{t("reminderInterval")}</strong><p>{t("reminderIntervalHelp")}</p></div><label className="seconds-input"><input aria-label={t("reminderInterval")} type="number" min="1" max="60" step="1" value={settings.reminder_interval_seconds} onChange={(event) => { const seconds = event.currentTarget.valueAsNumber; if (Number.isInteger(seconds) && seconds >= 1 && seconds <= 60) update("reminder_interval_seconds", seconds); }} /><span>{t("seconds")}</span></label></div></div>
           )}
           {tab === "integration" && (
             <>

@@ -1,4 +1,4 @@
-name: Release preview installers
+name: Release installers
 
 on:
   push:
@@ -55,6 +55,13 @@ jobs:
           releaseBody: |
             Independent open-source beta. Not affiliated with, endorsed by, or sponsored by OpenAI.
 
+            Highlights:
+            - Local Codex lifecycle Hook monitoring with diagnostics and unread task history.
+            - Lumi AI Voice 01 bilingual prompts that automatically follow the UI language.
+            - Configurable repeating reminders, volume boost up to 200%, and one-click mark all as read.
+            - Global shortcut to dismiss the current reminder without opening the app.
+            - macOS window restoration from the Dock, tray icon, tray menu, or a second launch.
+
             This prerelease is unsigned: macOS uses ad-hoc signing and Windows installers have no Authenticode certificate. Verify SHA-256 checksums, SBOMs, and GitHub build provenance. Do not globally disable operating-system security features.
           releaseDraft: true
           prerelease: true
@@ -101,3 +108,23 @@ jobs:
           draft: true
           prerelease: true
           files: artifacts/*
+
+  publish:
+    name: Publish prerelease
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the completed draft release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const tag = context.ref.replace('refs/tags/', '');
+            const { data: release } = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+            await github.rest.repos.updateRelease({
+              owner,
+              repo,
+              release_id: release.id,
+              draft: false,
+              prerelease: true,
+            });

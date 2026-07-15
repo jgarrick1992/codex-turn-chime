@@ -1,6 +1,6 @@
 # Release process
 
-CodexTurnChime follows Semantic Versioning and Keep a Changelog. The first tag is `v0.1.0-beta.1`.
+CodexTurnChime follows Semantic Versioning and Keep a Changelog. The first public tag is `v0.1.0-beta.2`.
 
 ## Before tagging
 
@@ -17,10 +17,11 @@ A `v*` tag starts `.github/workflows/release.yml`:
 - macOS builds an ARM64 DMG with ad-hoc signing.
 - Windows builds x64 NSIS EXE and MSI installers.
 - The helper is built first and staged as a target-triple Tauri sidecar.
-- Each job creates CycloneDX SBOMs, SHA-256 files, and GitHub build provenance.
+- Each job creates SPDX SBOMs, SHA-256 files, and GitHub build provenance.
 - Assets are attached to a Draft Prerelease.
+- After both platform jobs succeed, the workflow publishes the completed prerelease automatically.
 
-A maintainer must inspect every asset and manually publish the draft. Do not tag again merely to replace a broken immutable artifact; document and issue a new prerelease version.
+Do not tag again merely to replace a broken immutable artifact; document the failure and issue a new prerelease version.
 
 ## Future signing secrets
 

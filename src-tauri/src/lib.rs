@@ -7,6 +7,7 @@ mod paths;
 mod persistence;
 mod queue;
 mod settings;
+mod shortcuts;
 mod watcher;
 
 use std::{
@@ -17,10 +18,11 @@ use std::{
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
-    tray::TrayIconBuilder,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
 use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_global_shortcut::ShortcutState;
 
 use crate::{
     error::AppResult,
@@ -33,6 +35,17 @@ pub struct AppState {
     paths: AppPaths,
     database: Database,
     watcher_health: SharedWatcherHealth,
+    shortcut_status: shortcuts::SharedShortcutStatus,
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    #[cfg(target_os = "macos")]
+    let _ = app.show();
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
 }
 
 fn start_monitor_worker(
@@ -139,16 +152,23 @@ pub fn run() {
     let worker_paths = paths.clone();
     let worker_database = database.clone();
     let worker_health = watcher_health.clone();
+    let shortcut_status = shortcuts::new_status();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            show_main_window(app);
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        let _ = app.emit("dismiss-reminder", ());
+                    }
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--background"]),
@@ -157,8 +177,17 @@ pub fn run() {
             paths,
             database,
             watcher_health,
+            shortcut_status,
         })
         .setup(move |app| {
+            let state = app.state::<AppState>();
+            if let Ok(app_settings) = settings::load(&state.paths.settings) {
+                shortcuts::register_initial(
+                    app.handle(),
+                    &state.shortcut_status,
+                    app_settings.dismiss_reminder_shortcut.as_deref(),
+                );
+            }
             let open = MenuItem::with_id(app, "open", "Open Dashboard", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Mute / Unmute", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
@@ -167,13 +196,20 @@ pub fn run() {
             let mut tray = TrayIconBuilder::with_id("main")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "open" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                .on_tray_icon_event(|tray, event| {
+                    if matches!(
+                        event,
+                        TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
                         }
+                    ) {
+                        show_main_window(tray.app_handle());
                     }
+                })
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open" => show_main_window(app),
                     "mute" => {
                         let state = app.state::<AppState>();
                         if let Ok(mut value) = settings::load(&state.paths.settings) {
@@ -212,6 +248,7 @@ pub fn run() {
             commands::list_tasks,
             commands::list_events,
             commands::mark_task_read,
+            commands::mark_all_tasks_read,
             commands::clear_history,
             commands::get_settings,
             commands::save_settings,
@@ -221,6 +258,14 @@ pub fn run() {
             commands::get_diagnostics,
             commands::read_sound_file,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running CodexTurnChime");
+        .build(tauri::generate_context!())
+        .expect("error while building CodexTurnChime")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                show_main_window(app);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
