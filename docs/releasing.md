@@ -15,7 +15,7 @@ CodexTurnChime follows Semantic Versioning and Keep a Changelog. The first publi
 A `v*` tag starts `.github/workflows/release.yml`:
 
 - macOS builds an ARM64 DMG with ad-hoc signing.
-- Windows builds x64 NSIS EXE and MSI installers.
+- Windows beta releases build an x64 NSIS EXE installer; WiX/MSI is reserved for numeric stable versions.
 - The helper is built first and staged as a target-triple Tauri sidecar.
 - Each job creates SPDX SBOMs, SHA-256 files, and GitHub build provenance.
 - Assets are attached to a Draft Prerelease.

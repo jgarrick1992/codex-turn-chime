@@ -162,11 +162,10 @@ src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
 powershell -ExecutionPolicy Bypass -File scripts/build_windows_x64.ps1
 ```
 
-脚本会安装 lockfile 固定的 npm 依赖、构建前端和 Windows Hook sidecar，并生成未签名的 NSIS 与 MSI 安装包：
+脚本会安装 lockfile 固定的 npm 依赖、构建前端和 Windows Hook sidecar，并生成未签名的 NSIS 安装包。`beta.2` 这类 beta SemVer 标识不兼容 WiX/MSI 的版本规则，因此 beta 版本只生成 NSIS：
 
 ```text
 src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*.exe
-src-tauri\target\x86_64-pc-windows-msvc\release\bundle\msi\*.msi
 ```
 
 完整检查命令见 [CONTRIBUTING.md](CONTRIBUTING.md)。

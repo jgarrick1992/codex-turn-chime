@@ -824,7 +824,7 @@ Windows：
 - Runner：`windows-latest`
 - Target：`x86_64-pc-windows-msvc`
 - Minimum system：Windows 11
-- Bundle：NSIS EXE、MSI
+- Bundle：beta 版本使用 NSIS EXE；数字稳定版本再启用 MSI
 - 首版无 Authenticode 正式签名
 
 参考：[Tauri GitHub Pipeline](https://v2.tauri.app/distribute/pipelines/github/)
@@ -835,7 +835,6 @@ Windows：
 
 - macOS ARM64 DMG
 - Windows x64 NSIS installer
-- Windows x64 MSI
 - `checksums-sha256.txt`
 - 前端 CycloneDX SBOM
 - Rust CycloneDX SBOM
