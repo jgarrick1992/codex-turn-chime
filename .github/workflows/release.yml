@@ -111,7 +111,7 @@ jobs:
         with:
           subject-path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
       - name: Attach checksums and SBOM
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           prerelease: true
