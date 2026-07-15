@@ -304,7 +304,7 @@ mod tests {
             "/work".into(),
             "test",
         );
-        assert_eq!(db.record_events(&[event.clone()]).unwrap().len(), 1);
+        assert_eq!(db.record_events(std::slice::from_ref(&event)).unwrap().len(), 1);
         assert!(db.record_events(&[event]).unwrap().is_empty());
         assert_eq!(db.list_tasks().unwrap().len(), 1);
     }

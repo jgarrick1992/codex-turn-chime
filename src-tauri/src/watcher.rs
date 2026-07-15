@@ -248,7 +248,7 @@ fn file_identity(path: &Path, metadata: &std::fs::Metadata) -> AppResult<String>
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
-        return Ok(format!(
+        Ok(format!(
             "{}:{}:{}",
             canonical.display(),
             metadata.dev(),
