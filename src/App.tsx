@@ -187,7 +187,16 @@ export default function App() {
     void bridge.onMonitorEvent(async (event) => {
       await refreshTasks();
       if (event.kind === "needs_input" || event.kind === "ready" || event.kind === "blocked" || event.kind === "stopped") {
-        if (!windowFocusedRef.current) reminderRef.current?.start(event);
+        let mainWindowActive = windowFocusedRef.current;
+        try {
+          const appWindow = getCurrentWindow();
+          const [focused, visible] = await Promise.all([appWindow.isFocused(), appWindow.isVisible()]);
+          mainWindowActive = focused && visible;
+          windowFocusedRef.current = mainWindowActive;
+        } catch {
+          // Keep the last focus state when the native window cannot be queried.
+        }
+        if (!mainWindowActive) reminderRef.current?.start(event);
       } else {
         reminderRef.current?.stop();
       }

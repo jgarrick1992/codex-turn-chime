@@ -119,7 +119,7 @@ export function SettingsView({
           {tab === "integration" && (
             <>
               <div className="settings-section integration-card"><div className="setting-icon"><Link2 /></div><div><h2>{t("hookIntegration")}</h2><p>{t("hookHelp")}</p><span className={hookInstalled ? "health-badge ok" : "health-badge"}>{hookInstalled ? t("alreadyInstalled") : t("notInstalled")}</span><div className="button-row"><button className="primary-button" type="button" onClick={onPreviewHook}>{t("previewChanges")}</button>{hookInstalled && <button className="secondary-button danger" type="button" onClick={onUninstallHook}>{t("uninstallHook")}</button>}</div></div></div>
-              <div className="settings-section integration-card experimental"><div className="setting-icon"><FlaskConical /></div><div><div className="setting-heading"><h2>{t("transcriptWatcher")}</h2><Toggle checked={settings.transcript_watcher_enabled} onChange={(checked) => update("transcript_watcher_enabled", checked)} label={t("transcriptWatcher")} /></div><p>{t("transcriptWatcherHelp")}</p><code>codex-jsonl-v1 · fail-closed</code></div></div>
+              <div className="settings-section integration-card experimental"><div className="setting-icon"><FlaskConical /></div><div><div className="setting-heading"><h2>{t("transcriptWatcher")}</h2><Toggle checked={settings.transcript_watcher_enabled} onChange={(checked) => update("transcript_watcher_enabled", checked)} label={t("transcriptWatcher")} /></div><p>{t("transcriptWatcherHelp")}</p><code>codex-jsonl-v2 · fail-closed</code></div></div>
             </>
           )}
           {tab === "privacy" && (

@@ -216,7 +216,7 @@ flowchart LR
 - 不尝试其他 key、旧字段或相似名称。
 - 不写入 Codex 的 SQLite、session 或配置文件。
 
-本机当前验证结构只作为 `codex-jsonl-v1` 适配器依据，不宣称是 OpenAI 稳定 API。
+本机当前验证结构只作为 `codex-jsonl-v2` 适配器依据，不宣称是 OpenAI 稳定 API。
 
 ## 7. Codex 接入设计
 
@@ -427,14 +427,26 @@ Codex App Server 能提供线程、turn、item、授权和流式事件，适合�
 - `source_path` primary key
 - `file_identity`
 - `byte_offset`
+- `cwd`
+- `turn_id`
 - `updated_at`
+
+`watcher_pending_inputs`：
+
+- `source_path`
+- `file_identity`
+- `session_id`
+- `call_id`
+- `event_id`
+- `turn_id`
+- `cwd`
 
 数据库迁移使用单向版本号。首版从 schema 1 开始，不为不存在的旧 schema 添加映射。
 
 ### 9.3 保留与清除
 
 - 默认保留事件 30 天。
-- 每次启动和每天一次清理过期记录。
+- 每次启动后立即清理，并由独立 maintenance worker 每小时清理一次过期记录。
 - 用户可以立即清除全部状态历史。
 - 清除历史不卸载 Hook、不删除声音文件、不修改 Codex 数据。
 - 日志默认只记录事件类型、错误码和路径状态，不记录事件正文。
@@ -1007,7 +1019,7 @@ Release workflow 预留但不要求以下 secrets：
 
 - 实现 opt-in 隐私确认。
 - 实现文件发现、增量读取和 checkpoint。
-- 实现 `codex-jsonl-v1` 解析器。
+- 实现 `codex-jsonl-v2` 解析器。
 - 实现普通问题和中断状态。
 - 实现 incompatible fail-closed。
 - 添加脱敏 fixtures。

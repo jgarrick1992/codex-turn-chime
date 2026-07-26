@@ -17,6 +17,8 @@
 
 生成的 handler 同时包含 `command` 与 `commandWindows`，超时 1 秒。只有打包的 helper 确实存在时才允许安装。
 
+开发版使用 `CodexTurnChime Dev: recording task state`，生产版使用 `CodexTurnChime: recording task state`。两者按精确状态标识和 helper 路径独立安装、预览及卸载，不互相映射或删除；只有主动安装开发版 Hook 时才会产生第二组事件。
+
 新的或发生变化的非托管 command Hook 在用户审查并信任其精确定义之前不会执行。安装或修改 Hook 配置后需要重启 Codex。
 
 Helper 只接受不超过 1 MiB 的单个 JSON 对象，要求精确的 `session_id`、`turn_id`、`cwd` 和 `hook_event_name`。额外官方字段可以存在，但不接受字段别名。未知事件不生成状态；任何失败都不影响 Codex 正常运行。

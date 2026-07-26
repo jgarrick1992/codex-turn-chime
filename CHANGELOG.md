@@ -6,9 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0-beta.3] - 2026-07-27
+
+### Changed
+
+- Replace the two-second full transcript sweep with filesystem notifications, metadata-only reconciliation, bounded incremental parsing, and persisted watcher context.
+- Isolate Hook queue consumption, transcript processing, and retention cleanup so large Codex histories cannot stall sound delivery.
+
+### Added
+
+- Give development builds a separate app identifier, data directory, single-instance socket, and exact Hook identity.
+- Verify macOS bundle identity, architecture, sidecar permissions, signing, startup, and second-instance behavior during packaging.
+
 ### Fixed
 
 - Find authenticated draft releases through the release list before publishing them after all installer jobs succeed.
+- Avoid replaying multi-gigabyte transcript history after startup and bound oversized JSONL records without reading Codex SQLite databases.
 
 ## [0.1.0-beta.2] - 2026-07-16
 
@@ -32,5 +45,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Build the frontend distribution before compiling release binaries on clean GitHub runners.
 - Publish beta Windows builds as NSIS installers because WiX/MSI rejects textual SemVer prerelease identifiers such as `beta.2`.
 
-[Unreleased]: https://github.com/jgarrick1992/codex-turn-chime/compare/v0.1.0-beta.2...HEAD
+[Unreleased]: https://github.com/jgarrick1992/codex-turn-chime/compare/v0.1.0-beta.3...HEAD
+[0.1.0-beta.3]: https://github.com/jgarrick1992/codex-turn-chime/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/jgarrick1992/codex-turn-chime/releases/tag/v0.1.0-beta.2

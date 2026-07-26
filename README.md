@@ -57,7 +57,7 @@ It never stores prompts, answers, command text, tool input, or tool output.
 - macOS 13+ on Apple Silicon
 - Windows 11 x64
 - Official Codex Hooks as the default event source
-- Optional, read-only `codex-jsonl-v1` transcript watcher
+- Optional, read-only `codex-jsonl-v2` transcript watcher for `request_user_input` question reminders
 - English and Simplified Chinese interface
 - Lumi bilingual AI voice prompts, built-in chime, and WAV/MP3 custom sounds
 - Configurable 5-second repeat reminders and a global dismiss shortcut
@@ -128,6 +128,8 @@ On an Apple Silicon Mac, the development helper checks macOS/Xcode tools, activa
 bash scripts/debug.sh
 ```
 
+Development runs as `CodexTurnChime Dev` with a separate `.dev` identifier and application-data directory, so it can coexist with the packaged production app without sharing a single-instance socket. Its Hook handler is also exact and independent; Codex sends duplicate development events only if you explicitly install the development Hook.
+
 The environment check can also be run independently:
 
 ```bash
@@ -138,7 +140,7 @@ The current environment scripts target macOS 13+ on Apple Silicon. For Windows d
 
 ```bash
 npm install
-npm run tauri dev
+npm run app:dev
 ```
 
 ## Build macOS Apple Silicon packages
@@ -148,6 +150,8 @@ From the repository root, run:
 ```bash
 bash scripts/build_macos_arm.sh
 ```
+
+The script builds the app and DMG, then verifies the production bundle identifier, ARM64 executables, sidecar permissions, code-signing structure, startup, and second-instance behavior.
 
 The script validates the environment, builds the frontend, compiles and stages the release Hook sidecar, and produces both formats:
 
@@ -185,7 +189,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## Distribution warning for the beta
 
-`v0.1.0-beta.2` is not signed with a paid Apple Developer ID or Windows code-signing certificate. macOS builds use ad-hoc signing; Windows installers are unsigned. Gatekeeper or SmartScreen may show a warning. Do not globally disable operating-system security features; verify the published SHA-256 checksum and release provenance instead.
+`v0.1.0-beta.3` is not signed with a paid Apple Developer ID or Windows code-signing certificate. macOS builds use ad-hoc signing; Windows installers are unsigned. Gatekeeper or SmartScreen may show a warning. Do not globally disable operating-system security features; verify the published SHA-256 checksum and release provenance instead.
 
 ## Project policies
 

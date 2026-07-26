@@ -8,6 +8,10 @@ Open **Diagnostics** and verify the helper, Hook, queue, and database. Preview t
 
 Development and release builds must stage the target-triple sidecar before Tauri packaging. Build `codex-turn-chime-hook`, then run `node scripts/stage-sidecar.mjs <target> release`. Do not install the Hook with an arbitrary or stale helper path.
 
+## Packaged app disappears immediately
+
+Development and production now use different identifiers, data directories, and single-instance sockets. Start development with `bash scripts/debug.sh` or `npm run app:dev`. An old `npm run tauri dev` process may still use the production identifier; stop its Tauri and Vite supervisor processes before retrying. Run `bash scripts/smoke_macos_app.sh` to validate an existing production `.app`.
+
 ## Custom audio fails
 
 Only readable WAV and MP3 files up to 25 MiB are accepted. The file extension and signature must agree. Re-select a moved file. CodexTurnChime reports the error and does not silently substitute another custom file.

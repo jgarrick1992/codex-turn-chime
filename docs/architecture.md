@@ -7,9 +7,9 @@ CodexTurnChime is a local desktop process. v0.1 has no account, remote API, tele
 ## Components
 
 1. `codex-turn-chime-hook` reads one Hook JSON object from stdin, maps an exact official event name, appends one `MonitorEvent v1` line under a file lock, and exits. Every failure still returns process exit code 0 so monitoring cannot stop Codex.
-2. The queue worker drains complete JSONL lines, rejects invalid records, preserves an incomplete trailing line, and returns events to the queue if SQLite persistence fails.
+2. A dedicated queue worker drains complete JSONL lines every 450 ms, rejects invalid records, preserves an incomplete trailing line, and returns events to the queue if SQLite persistence fails. Transcript work and retention cleanup run on separate workers and cannot delay Hook delivery.
 3. SQLite deduplicates `event_id`, rejects schema versions other than 1, applies timestamp ordering, and materializes current task state.
-4. The optional watcher incrementally reads `.jsonl` files under `CODEX_HOME/sessions`, keeps byte-offset/file-identity checkpoints, and disables itself when a recognized record violates `codex-jsonl-v1`.
+4. The optional watcher uses filesystem Create/Modify notifications with 250 ms debounce, plus a 60-second metadata-only reconciliation. It baselines existing files at EOF, persists parser context and pending input state, and reads changed files in bounded 8 MiB/2,000-line batches.
 5. The Tauri shell emits accepted events to the React webview, which updates the dashboard and plays local audio. The webview cannot execute arbitrary shell commands.
 
 ## Event contract
@@ -48,6 +48,8 @@ Late events cannot replace a newer task snapshot. Equal-time events use `event_i
 
 macOS: `~/Library/Application Support/io.github.jgarrick1992.codexturnchime/`
 
+macOS development: `~/Library/Application Support/io.github.jgarrick1992.codexturnchime.dev/`
+
 Windows: `%APPDATA%\io.github.jgarrick1992.codexturnchime\`
 
-The directory contains `codex-turn-chime.db`, `settings.json`, `hook-events.jsonl`, `logs/`, and `backups/`. Database tables are `monitor_events`, `task_states`, and `watcher_checkpoints`. History retention is fixed at 30 days in v0.1.
+The directory contains `codex-turn-chime.db`, `settings.json`, `hook-events.jsonl`, `logs/`, and `backups/`. Database tables are `monitor_events`, `task_states`, `watcher_checkpoints`, and `watcher_pending_inputs`. History retention is fixed at 30 days in v0.1. CodexTurnChime never queries, vacuums, or writes Codex's own SQLite databases.

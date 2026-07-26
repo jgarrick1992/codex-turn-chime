@@ -7,9 +7,9 @@ CodexTurnChime 是本地桌面进程。v0.1 没有账号、远程 API、遥测�
 ## 组件
 
 1. `codex-turn-chime-hook` 从 stdin 读取一个 Hook JSON，只映射精确官方事件名，在文件锁保护下追加一个 `MonitorEvent v1`，然后退出。即使监控失败，进程也返回 0，不能阻断 Codex。
-2. 队列工作线程只消费完整 JSONL 行，拒绝无效记录，保留末尾半行；SQLite 写入失败时把事件放回队列。
+2. 独立队列工作线程每 450 ms 消费完整 JSONL 行，拒绝无效记录并保留末尾半行；SQLite 写入失败时把事件放回队列。Transcript 与 retention 分别运行在其他线程，不能延迟 Hook 报警。
 3. SQLite 按 `event_id` 去重，只接受 schema 1，以时间顺序规约并物化当前状态。
-4. 可选 watcher 增量读取 `CODEX_HOME/sessions` 的 `.jsonl`，保存文件身份和字节偏移；已识别记录不符合 `codex-jsonl-v1` 时自动停用。
+4. 可选 watcher 使用文件 Create/Modify 通知、250 ms 去抖和每 60 秒一次的纯 metadata 对账。已有文件从 EOF 建立基线，解析上下文与 pending input 会持久化，变化文件按 8 MiB/2,000 行预算分批读取。
 5. Tauri 将接受的事件发送给 React 界面，界面刷新并播放本地声音。WebView 没有任意 shell 执行能力。
 
 ## 唯一事件契约
@@ -32,6 +32,7 @@ CodexTurnChime 是本地桌面进程。v0.1 没有账号、远程 API、遥测�
 ## 本地存储
 
 - macOS：`~/Library/Application Support/io.github.jgarrick1992.codexturnchime/`
+- macOS 开发版：`~/Library/Application Support/io.github.jgarrick1992.codexturnchime.dev/`
 - Windows：`%APPDATA%\io.github.jgarrick1992.codexturnchime\`
 
-目录包含数据库、设置、事件队列、日志与配置备份。数据库只有 `monitor_events`、`task_states` 和 `watcher_checkpoints`，历史固定保留 30 天。
+目录包含数据库、设置、事件队列、日志与配置备份。数据库包含 `monitor_events`、`task_states`、`watcher_checkpoints` 和 `watcher_pending_inputs`，历史固定保留 30 天。CodexTurnChime 不查询、压缩或写入 Codex 自己的 SQLite 数据库。

@@ -13,7 +13,15 @@ use crate::{
     paths,
 };
 
-const HANDLER_STATUS: &str = "CodexTurnChime: recording task state";
+#[cfg(any(not(debug_assertions), test))]
+const RELEASE_HANDLER_STATUS: &str = "CodexTurnChime: recording task state";
+#[cfg(any(debug_assertions, test))]
+const DEVELOPMENT_HANDLER_STATUS: &str = "CodexTurnChime Dev: recording task state";
+
+#[cfg(debug_assertions)]
+const HANDLER_STATUS: &str = DEVELOPMENT_HANDLER_STATUS;
+#[cfg(not(debug_assertions))]
+const HANDLER_STATUS: &str = RELEASE_HANDLER_STATUS;
 const EVENTS: [&str; 3] = ["UserPromptSubmit", "PermissionRequest", "Stop"];
 
 #[derive(Clone, Debug, Serialize)]
@@ -360,6 +368,30 @@ mod tests {
         .unwrap();
         let removed = remove_handlers(source).unwrap();
         assert!(removed.to_string().contains("other"));
+        assert!(!removed.to_string().contains(HANDLER_STATUS));
+    }
+
+    #[test]
+    fn development_and_release_handlers_are_independent() {
+        let other_status = if cfg!(debug_assertions) {
+            RELEASE_HANDLER_STATUS
+        } else {
+            DEVELOPMENT_HANDLER_STATUS
+        };
+        let other = json!({
+            "type": "command",
+            "command": "/Applications/CodexTurnChime/codex-turn-chime-hook",
+            "statusMessage": other_status
+        });
+        assert!(!is_our_handler(&other));
+
+        let source = json!({"hooks":{"Stop":[{"hooks":[other.clone()]}]}});
+        let installed = add_handlers(source, Path::new("/tmp/codex-turn-chime-hook")).unwrap();
+        let handlers = installed["hooks"]["Stop"].as_array().unwrap();
+        assert_eq!(handlers.len(), 2);
+
+        let removed = remove_handlers(installed).unwrap();
+        assert!(removed.to_string().contains(other_status));
         assert!(!removed.to_string().contains(HANDLER_STATUS));
     }
 

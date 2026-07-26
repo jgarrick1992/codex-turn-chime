@@ -8,6 +8,10 @@
 
 开发/发布打包前必须构建 helper 并执行 `node scripts/stage-sidecar.mjs <target> release`。不要把任意路径或旧 helper 写进 Hook。
 
+## 打包版启动后一闪而退
+
+开发版和生产版现在使用不同的 identifier、数据目录和 single-instance socket。请使用 `bash scripts/debug.sh` 或 `npm run app:dev` 启动开发版；旧的 `npm run tauri dev` 进程仍可能使用生产 identifier，应完整退出其 Tauri 与 Vite 监督进程后重试。可运行 `bash scripts/smoke_macos_app.sh` 验证现有生产 `.app`。
+
 ## 自定义声音失败
 
 只支持不超过 25 MiB 的可读 WAV/MP3，扩展名必须和文件签名一致。文件移动后需要重新选择；应用会明确报错，不会悄悄替换成其他自定义文件。

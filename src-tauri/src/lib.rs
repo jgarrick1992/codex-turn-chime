@@ -11,11 +11,14 @@ mod shortcuts;
 mod watcher;
 
 use std::{
-    sync::{Arc, Mutex},
+    collections::HashSet,
+    path::PathBuf,
+    sync::{mpsc, Arc, Mutex},
     thread,
     time::{Duration, Instant},
 };
 
+use notify::{EventKind, RecursiveMode, Watcher};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -35,6 +38,7 @@ pub struct AppState {
     paths: AppPaths,
     database: Database,
     watcher_health: SharedWatcherHealth,
+    watcher_control: mpsc::Sender<bool>,
     shortcut_status: shortcuts::SharedShortcutStatus,
 }
 
@@ -48,85 +52,248 @@ fn show_main_window(app: &tauri::AppHandle) {
     }
 }
 
-fn start_monitor_worker(
+fn start_hook_worker(app: tauri::AppHandle, paths: AppPaths, database: Database) {
+    thread::spawn(move || loop {
+        match queue::drain(&paths.queue) {
+            Ok(drained) => {
+                if drained.rejected_lines > 0 {
+                    tracing::warn!(
+                        count = drained.rejected_lines,
+                        "rejected invalid local queue records"
+                    );
+                }
+                if !drained.events.is_empty() {
+                    match database.record_events(&drained.events) {
+                        Ok(events) => {
+                            for event in events {
+                                let _ = app.emit("monitor-event", event);
+                            }
+                        }
+                        Err(error) => {
+                            tracing::error!(%error, "failed to persist hook events; returning them to the local queue");
+                            for event in drained.events {
+                                if let Err(queue_error) = queue::append(&paths.queue, &event) {
+                                    tracing::error!(%queue_error, "failed to restore an event to the local queue");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Err(error) => tracing::error!(%error, "failed to drain local hook queue"),
+        }
+
+        thread::sleep(Duration::from_millis(450));
+    });
+}
+
+fn start_watcher_worker(
+    app: tauri::AppHandle,
+    database: Database,
+    health: SharedWatcherHealth,
+    control_rx: mpsc::Receiver<bool>,
+    mut requested: bool,
+) {
+    thread::spawn(move || {
+        let codex_home = match paths::codex_home() {
+            Ok(path) => path,
+            Err(error) => {
+                tracing::warn!(%error, "cannot resolve Codex home for transcript watcher");
+                return;
+            }
+        };
+        let sessions = codex_home.join("sessions");
+        let (notify_tx, notify_rx) = mpsc::channel();
+        let notify_callback_tx = notify_tx.clone();
+        let mut filesystem_watcher = match notify::recommended_watcher(move |result| {
+            let _ = notify_callback_tx.send(result);
+        }) {
+            Ok(watcher) => Some(watcher),
+            Err(error) => {
+                tracing::warn!(%error, "failed to initialize filesystem transcript watcher; using reconciliation only");
+                None
+            }
+        };
+        let mut watched_sessions = false;
+        let mut enabled = false;
+        let mut engine: Option<WatcherEngine> = None;
+        let mut pending_paths = HashSet::<PathBuf>::new();
+        let mut last_notification: Option<Instant> = None;
+        let mut last_reconcile = Instant::now();
+        let _notify_channel_keepalive = notify_tx;
+
+        loop {
+            for next in control_rx.try_iter() {
+                requested = next;
+            }
+            match notify_rx.recv_timeout(Duration::from_millis(50)) {
+                Ok(Ok(event)) => {
+                    if enabled && matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_)) {
+                        for path in event.paths {
+                            if watcher::is_transcript(&path) {
+                                pending_paths.insert(path);
+                                last_notification = Some(Instant::now());
+                            }
+                        }
+                    }
+                }
+                Ok(Err(error)) => tracing::warn!(%error, "filesystem transcript watcher error"),
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    tracing::warn!("filesystem transcript watcher disconnected; using reconciliation only");
+                    filesystem_watcher = None;
+                }
+            }
+            for result in notify_rx.try_iter() {
+                match result {
+                    Ok(event)
+                        if enabled && matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_)) =>
+                    {
+                        for path in event.paths {
+                            if watcher::is_transcript(&path) {
+                                pending_paths.insert(path);
+                                last_notification = Some(Instant::now());
+                            }
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(error) => tracing::warn!(%error, "filesystem transcript watcher error"),
+                }
+            }
+
+            if !sessions.exists() {
+                watched_sessions = false;
+            } else if !watched_sessions {
+                if let Some(filesystem_watcher) = filesystem_watcher.as_mut() {
+                    match filesystem_watcher.watch(&sessions, RecursiveMode::Recursive) {
+                        Ok(()) => watched_sessions = true,
+                        Err(error) => tracing::warn!(%error, "failed to watch Codex sessions directory"),
+                    }
+                }
+            }
+
+            let compatible = health.lock().map(|value| value.compatible).unwrap_or(false);
+            let should_enable = requested && compatible;
+            if should_enable && !enabled {
+                match WatcherEngine::load(&database).and_then(|mut loaded| {
+                    loaded.baseline_existing(&sessions, &database)?;
+                    let changed = loaded.reconcile(&sessions, &database)?;
+                    Ok((loaded, changed))
+                }) {
+                    Ok((loaded, changed)) => {
+                        engine = Some(loaded);
+                        pending_paths.clear();
+                        pending_paths.extend(changed);
+                        last_notification = if pending_paths.is_empty() {
+                            None
+                        } else {
+                            Some(Instant::now() - Duration::from_millis(250))
+                        };
+                        last_reconcile = Instant::now();
+                        enabled = true;
+                    }
+                    Err(error::AppError::IncompatibleFormat(message)) => {
+                        disable_watcher(&app, &health, message);
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "failed to establish transcript watcher baseline")
+                    }
+                }
+            } else if !should_enable && enabled {
+                enabled = false;
+                engine = None;
+                pending_paths.clear();
+                last_notification = None;
+            }
+
+            if enabled && last_reconcile.elapsed() >= Duration::from_secs(60) {
+                last_reconcile = Instant::now();
+                if let Some(engine) = engine.as_mut() {
+                    match engine.reconcile(&sessions, &database) {
+                        Ok(paths) => {
+                            if !paths.is_empty() {
+                                pending_paths.extend(paths);
+                                last_notification = Some(Instant::now() - Duration::from_millis(250));
+                            }
+                        }
+                        Err(error) => tracing::warn!(%error, "transcript metadata reconciliation failed"),
+                    }
+                }
+            }
+
+            let debounce_elapsed =
+                last_notification.is_some_and(|instant| instant.elapsed() >= Duration::from_millis(250));
+            if enabled && debounce_elapsed && !pending_paths.is_empty() {
+                let paths = pending_paths.drain().collect::<Vec<_>>();
+                last_notification = None;
+                let Some(active_engine) = engine.as_mut() else {
+                    continue;
+                };
+                match active_engine.scan_paths(paths.clone(), &database) {
+                    Ok(batch) => {
+                        if !batch.continuations.is_empty() {
+                            pending_paths.extend(batch.continuations);
+                            last_notification = Some(Instant::now() - Duration::from_millis(250));
+                        }
+                        for event in batch.events {
+                            let _ = app.emit("monitor-event", event);
+                        }
+                    }
+                    Err(error::AppError::IncompatibleFormat(message)) => {
+                        enabled = false;
+                        engine = None;
+                        pending_paths.clear();
+                        last_notification = None;
+                        disable_watcher(&app, &health, message);
+                    }
+                    Err(error) => {
+                        pending_paths.extend(paths);
+                        last_notification = Some(Instant::now() - Duration::from_millis(250));
+                        tracing::warn!(%error, "transcript watcher scan failed; queued for retry");
+                    }
+                }
+            }
+        }
+    });
+}
+
+fn disable_watcher(app: &tauri::AppHandle, health: &SharedWatcherHealth, message: String) {
+    if let Ok(mut value) = health.lock() {
+        value.compatible = false;
+        value.message = Some(message.clone());
+    }
+    let _ = app.emit("watcher-disabled", message);
+}
+
+fn start_maintenance_worker(paths: AppPaths, database: Database) {
+    thread::spawn(move || loop {
+        let days = settings::load(&paths.settings)
+            .unwrap_or_default()
+            .history_retention_days;
+        if let Err(error) = database.cleanup_retention(days) {
+            tracing::warn!(%error, "history retention cleanup failed");
+        }
+        thread::sleep(Duration::from_secs(3600));
+    });
+}
+
+fn start_monitor_workers(
     app: tauri::AppHandle,
     paths: AppPaths,
     database: Database,
     health: SharedWatcherHealth,
+    watcher_control_rx: mpsc::Receiver<bool>,
+    watcher_requested: bool,
 ) {
-    thread::spawn(move || {
-        let mut watcher = WatcherEngine::default();
-        let mut last_watcher_scan = Instant::now() - Duration::from_secs(5);
-        let mut last_cleanup = Instant::now() - Duration::from_secs(3600);
-        loop {
-            match queue::drain(&paths.queue) {
-                Ok(drained) => {
-                    if drained.rejected_lines > 0 {
-                        tracing::warn!(
-                            count = drained.rejected_lines,
-                            "rejected invalid local queue records"
-                        );
-                    }
-                    if !drained.events.is_empty() {
-                        match database.record_events(&drained.events) {
-                            Ok(events) => {
-                                for event in events {
-                                    let _ = app.emit("monitor-event", event);
-                                }
-                            }
-                            Err(error) => {
-                                tracing::error!(%error, "failed to persist hook events; returning them to the local queue");
-                                for event in drained.events {
-                                    if let Err(queue_error) = queue::append(&paths.queue, &event) {
-                                        tracing::error!(%queue_error, "failed to restore an event to the local queue");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Err(error) => tracing::error!(%error, "failed to drain local hook queue"),
-            }
-
-            if last_watcher_scan.elapsed() >= Duration::from_secs(2) {
-                last_watcher_scan = Instant::now();
-                let app_settings = settings::load(&paths.settings).unwrap_or_default();
-                let compatible = health.lock().map(|value| value.compatible).unwrap_or(false);
-                if app_settings.transcript_watcher_enabled && compatible {
-                    let result = paths::codex_home().and_then(|home| watcher.scan_all(&home, &database));
-                    match result {
-                        Ok(events) => match database.record_events(&events) {
-                            Ok(events) => {
-                                for event in events {
-                                    let _ = app.emit("monitor-event", event);
-                                }
-                            }
-                            Err(error) => tracing::error!(%error, "failed to persist transcript events"),
-                        },
-                        Err(error::AppError::IncompatibleFormat(message)) => {
-                            if let Ok(mut value) = health.lock() {
-                                value.compatible = false;
-                                value.message = Some(message.clone());
-                            }
-                            let _ = app.emit("watcher-disabled", message);
-                        }
-                        Err(error) => tracing::warn!(%error, "transcript watcher scan failed"),
-                    }
-                }
-            }
-
-            if last_cleanup.elapsed() >= Duration::from_secs(3600) {
-                last_cleanup = Instant::now();
-                let days = settings::load(&paths.settings)
-                    .unwrap_or_default()
-                    .history_retention_days;
-                if let Err(error) = database.cleanup_retention(days) {
-                    tracing::warn!(%error, "history retention cleanup failed");
-                }
-            }
-            thread::sleep(Duration::from_millis(450));
-        }
-    });
+    start_hook_worker(app.clone(), paths.clone(), database.clone());
+    start_watcher_worker(
+        app,
+        database.clone(),
+        health,
+        watcher_control_rx,
+        watcher_requested,
+    );
+    start_maintenance_worker(paths, database);
 }
 
 fn initialize() -> AppResult<(AppPaths, Database, SharedWatcherHealth)> {
@@ -152,6 +319,10 @@ pub fn run() {
     let worker_paths = paths.clone();
     let worker_database = database.clone();
     let worker_health = watcher_health.clone();
+    let watcher_requested = settings::load(&paths.settings)
+        .unwrap_or_default()
+        .transcript_watcher_enabled;
+    let (watcher_control, watcher_control_rx) = mpsc::channel();
     let shortcut_status = shortcuts::new_status();
 
     tauri::Builder::default()
@@ -177,6 +348,7 @@ pub fn run() {
             paths,
             database,
             watcher_health,
+            watcher_control,
             shortcut_status,
         })
         .setup(move |app| {
@@ -230,11 +402,13 @@ pub fn run() {
                     let _ = window.hide();
                 }
             }
-            start_monitor_worker(
+            start_monitor_workers(
                 app.handle().clone(),
                 worker_paths.clone(),
                 worker_database.clone(),
                 worker_health.clone(),
+                watcher_control_rx,
+                watcher_requested,
             );
             Ok(())
         })

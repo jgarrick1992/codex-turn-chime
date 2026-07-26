@@ -17,6 +17,8 @@ Existing Hook groups and handlers are preserved. Repeated installation is idempo
 
 The generated handler includes `command` and `commandWindows`, a one-second timeout, and the status text `CodexTurnChime: recording task state`. The packaged helper must exist before installation is allowed.
 
+Development uses the exact status `CodexTurnChime Dev: recording task state`; production uses `CodexTurnChime: recording task state`. Preview, installation, and removal treat these as independent handlers and helper paths without aliases or cross-removal. A second development event stream exists only when the development Hook is explicitly installed.
+
 Codex skips new or changed non-managed command Hooks until the user reviews and trusts their exact definition. Restart Codex after installing or changing the Hook configuration.
 
 ## Helper behavior

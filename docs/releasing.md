@@ -2,6 +2,8 @@
 
 CodexTurnChime follows Semantic Versioning and Keep a Changelog. The first public tag is `v0.1.0-beta.2`.
 
+For the complete command-by-command packaging, protected-branch, tagging, verification, and failure-recovery playbook, see [完整打包与发布流程（中文）](packaging-workflow.zh-CN.md).
+
 ## Before tagging
 
 1. Confirm `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, and `CHANGELOG.md` use the same version.
@@ -17,6 +19,8 @@ A `v*` tag starts `.github/workflows/release.yml`:
 - macOS builds an ARM64 DMG with ad-hoc signing.
 - Windows beta releases build an x64 NSIS EXE installer; WiX/MSI is reserved for numeric stable versions.
 - The helper is built first and staged as a target-triple Tauri sidecar.
+- The macOS job verifies the production bundle identifier, ARM64 main/helper binaries, executable permissions, deep code-signing structure, startup, and second-instance behavior.
+- Debug builds use the separate `io.github.jgarrick1992.codexturnchime.dev` identity and cannot capture the production single-instance launch.
 - Each job creates SPDX SBOMs, SHA-256 files, and GitHub build provenance.
 - Assets are attached to a Draft Prerelease.
 - After both platform jobs succeed, the workflow publishes the completed prerelease automatically.

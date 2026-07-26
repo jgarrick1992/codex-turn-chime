@@ -10,4 +10,4 @@ PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/init_env.sh"
 
 cd "${PROJECT_ROOT}"
-exec npm run tauri dev
+exec npm run app:dev

@@ -8,5 +8,6 @@
 - [Testing strategy](testing.md)
 - [Voice prompt catalog](voice-prompt-catalog.md)
 - [Release process](releasing.md)
+- [完整打包与发布流程（中文）](packaging-workflow.zh-CN.md)
 - [Original feasibility analysis](feasibility-analysis.zh-CN.md)
 - [Original open-source project plan](project-plan.zh-CN.md)

@@ -57,7 +57,7 @@ CodexTurnChime 是一个完全本地运行的 Codex 跨平台任务状态与自�
 - macOS 13+ Apple Silicon
 - Windows 11 x64
 - 默认使用官方 Codex Hooks
-- 可选、只读的 `codex-jsonl-v1` transcript watcher
+- 可选、只读的 `codex-jsonl-v2` transcript watcher，用于 `request_user_input` 提问提醒
 - 中英双语界面
 - Lumi 双语 AI 人声、内置提示音和 WAV/MP3 自定义声音
 - 默认 5 秒的可配置重复提醒，以及全局停止提醒快捷键
@@ -124,6 +124,8 @@ Hook 安装会保留所有无关 Hook，并在修改受支持的 `hooks.json` �
 bash scripts/debug.sh
 ```
 
+开发版使用 `CodexTurnChime Dev`、独立的 `.dev` identifier 与应用数据目录，因此可以和已打包的生产版同时运行，不会争用 single-instance socket。开发版 Hook 也使用独立的精确 handler；只有主动安装开发版 Hook 时，Codex 才会同时向开发版发送事件。
+
 也可以只执行环境初始化：
 
 ```bash
@@ -134,7 +136,7 @@ bash scripts/init_env.sh
 
 ```bash
 npm install
-npm run tauri dev
+npm run app:dev
 ```
 
 ## 打包 macOS Apple Silicon 版本
@@ -145,7 +147,7 @@ npm run tauri dev
 bash scripts/build_macos_arm.sh
 ```
 
-脚本会检查环境、构建前端、编译并暂存 release Hook sidecar，最后同时生成两种格式：
+脚本会检查环境、构建前端、编译并暂存 release Hook sidecar，生成 `.app` 与 `.dmg`，再验证 bundle identifier、ARM64 架构、sidecar 可执行权限、代码签名和 single-instance 启动行为：
 
 ```text
 src-tauri/target/aarch64-apple-darwin/release/bundle/macos/CodexTurnChime.app
@@ -170,9 +172,11 @@ src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*.exe
 
 完整检查命令见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+从版本升级、PR 合并、tag、双平台构建到 GitHub Release 验证的完整操作步骤，见 [完整打包与发布流程](docs/packaging-workflow.zh-CN.md)。
+
 ## Beta 分发提醒
 
-`v0.1.0-beta.2` 没有正式 Apple Developer ID 或 Windows 代码签名证书。macOS 使用 ad-hoc signing，Windows 安装包未签名，Gatekeeper 或 SmartScreen 可能显示提醒。不要全局关闭系统安全功能；请核对发布页的 SHA-256、SBOM 和构建证明。
+`v0.1.0-beta.3` 没有正式 Apple Developer ID 或 Windows 代码签名证书。macOS 使用 ad-hoc signing，Windows 安装包未签名，Gatekeeper 或 SmartScreen 可能显示提醒。不要全局关闭系统安全功能；请核对发布页的 SHA-256、SBOM 和构建证明。
 
 Hook 依据官方 [Codex Hooks 文档](https://learn.chatgpt.com/docs/hooks)。Transcript 格式被明确视为不稳定接口；App Server 只列入后续路线，参考官方 [Codex App Server 文档](https://learn.chatgpt.com/docs/app-server)。项目不使用也不模仿 OpenAI/Codex 官方 Logo，遵循 [OpenAI Brand Guidelines](https://openai.com/brand/)。
 

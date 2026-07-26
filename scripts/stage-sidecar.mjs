@@ -1,4 +1,4 @@
-import { copyFile, mkdir, stat } from "node:fs/promises";
+import { chmod, copyFile, mkdir, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 
@@ -22,6 +22,7 @@ try {
   if (!info.isFile()) throw new Error("source is not a file");
   await mkdir(dirname(destination), { recursive: true });
   await copyFile(source, destination);
+  if (!windows) await chmod(destination, 0o755);
   console.log(`Staged sidecar: ${join("src-tauri", "binaries", destination.split(/[\\/]/).at(-1))}`);
 } catch (error) {
   console.error(`Unable to stage ${source}: ${error instanceof Error ? error.message : String(error)}`);

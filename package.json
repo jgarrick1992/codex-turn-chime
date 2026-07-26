@@ -1,7 +1,7 @@
 {
   "name": "codex-turn-chime",
   "private": true,
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
+    "app:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "icons": "tauri icon src-tauri/icons/icon.png",
     "tauri": "tauri"
   },

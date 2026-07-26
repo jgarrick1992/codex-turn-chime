@@ -76,6 +76,9 @@ jobs:
           releaseDraft: true
           prerelease: true
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+      - name: Smoke test packaged macOS application
+        if: runner.os == 'macOS'
+        run: bash scripts/smoke_macos_app.sh ${{ matrix.target }}
       - name: Prepare artifact directory
         shell: bash
         run: mkdir -p artifacts

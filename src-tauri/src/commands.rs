@@ -116,6 +116,14 @@ pub fn save_settings(
         }
         return Err(error);
     }
+    if settings.transcript_watcher_enabled != old.transcript_watcher_enabled
+        && state
+            .watcher_control
+            .send(settings.transcript_watcher_enabled)
+            .is_err()
+    {
+        tracing::warn!("transcript watcher control channel is unavailable");
+    }
     Ok(settings)
 }
 
